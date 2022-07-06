@@ -1,0 +1,80 @@
+* {
+  -webkit-overflow-scrolling: touch;
+
+  ::-webkit-scrollbar {
+    opacity: 1;
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #333;
+    opacity: 1;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: #777;
+    opacity: 1;
+  }
+}
+
+html,
+body {
+  color: $black;
+  font-family: "Helvetica Neue", Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+
+  * {
+    font-family: "Helvetica Neue", Helvetica, sans-serif;
+  }
+}
+
+html,
+body,
+.app,
+.app-container {
+  background-color: $white;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  height: 100%;
+  max-width: 100%;
+  width: 100%;
+}
+
+.app-container {
+  flex-direction: row;
+}
+
+a {
+  color: var(--color-text-primary);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-text-primary);
+  }
+}
+
+h1 {
+  font-size: 1.125rem;
+  font-weight: 400;
+}
+
+select {
+  appearance: none;
+  background: var(--background-input);
+  border: var(--border-input);
+  border-radius: var(--border-radius-input);
+  cursor: pointer;
+  font: var(--font-input);
+  height: 30px;
+  overflow: hidden;
+  padding: 0 20px 0 8px;
+  position: relative;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  * {
+    color: #f00;
+  }
+}

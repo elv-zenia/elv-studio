@@ -1,0 +1,36 @@
+$breakpoint: 1250px;
+$intermediate-breakpoint: 1000px;
+$tablet-breakpoint: 850px;
+$mobile-breakpoint: 600px;
+
+$gray: #565656;
+$blue: #1a65d6;
+$blue2: #436cde;
+$black: #000;
+$white: #fff;
+
+@mixin component {
+  background: var(--background-component-primary);
+  border: var(--border-component-primary);
+  border-radius: var(--border-radius-component);
+  color: var(--color-component-text-primary);
+  font: var(--font-component-text);
+}
+
+@keyframes fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeout {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@mixin page-fade-in($duration: 0.5s, $animation: ease-in) {
+  animation: $duration fadein $animation;
+}
+
+@mixin page-fade-out {
+  animation: 0.5s fadeout ease-in;
+}
