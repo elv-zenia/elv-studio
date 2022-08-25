@@ -32,7 +32,7 @@ module.exports = {
     }),
     new HTMLWebpackPlugin({
       template: Path.join(__dirname, "src", "index.html"),
-      title: "Eluvio Starter App",
+      title: "Eluvio Studio",
       cache: false,
       filename: "index.html",
       favicon: "./src/static/icons/favicon.png",

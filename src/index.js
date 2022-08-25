@@ -9,6 +9,7 @@ import * as Stores from "./stores";
 import {PageLoader} from "./components/common/Loader";
 import IngestJobs from "./components/IngestJobs";
 import IngestForm from "./components/IngestForm";
+import LeftNavigation from "Components/LeftNavigation";
 
 const appRoutes = [
   {path: "/", element: <Navigate replace to="/jobs" />},
@@ -21,6 +22,7 @@ const App = () => {
 
   return (
     <div className="app-container">
+      <LeftNavigation />
       <Routes>
         {
           appRoutes.map(({path, element}) => (
