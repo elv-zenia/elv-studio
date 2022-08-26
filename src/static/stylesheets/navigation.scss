@@ -9,11 +9,12 @@
 
   &__link {
     align-items: center;
-    color: $white;
+    color: $gray3;
     cursor: pointer;
     display: flex;
     height: 40px;
     padding: 0 20px;
+    position: relative;
 
     &-back {
       background-color: $gray2;
@@ -21,11 +22,7 @@
     }
 
     &.active {
-      background-color: $blue;
+      background: rgba($blue3, 70%);
     }
-  }
-
-  &__logo-container {
-    padding: 10px 20px 30px;
   }
 }

@@ -52,6 +52,11 @@ button {
   text-align: center;
 }
 
+input {
+  background: none;
+  border: 0;
+}
+
 /* revert for bug in Chromium browsers
    - fix for the content editable attribute will work properly. */
 :where([contenteditable]) {

@@ -7,14 +7,14 @@ import "Assets/stylesheets/app.scss";
 import * as Stores from "./stores";
 
 import {PageLoader} from "./components/common/Loader";
-import IngestJobs from "./components/IngestJobs";
-import IngestForm from "./components/IngestForm";
+import Jobs from "Components/ingest/Jobs";
+import Form from "Components/ingest/Form";
 import LeftNavigation from "Components/LeftNavigation";
 
 const appRoutes = [
   {path: "/", element: <Navigate replace to="/jobs" />},
-  {path: "/jobs", element: <IngestJobs />},
-  {path: "/new", element: <IngestForm />}
+  {path: "/jobs", element: <Jobs />},
+  {path: "/new", element: <Form />}
 ];
 
 const App = () => {
@@ -23,13 +23,15 @@ const App = () => {
   return (
     <div className="app-container">
       <LeftNavigation />
-      <Routes>
-        {
-          appRoutes.map(({path, element}) => (
-            <Route exact={true} key={path} path={path} element={element} />
-          ))
-        }
-      </Routes>
+      <main>
+        <Routes>
+          {
+            appRoutes.map(({path, element}) => (
+              <Route exact={true} key={path} path={path} element={element} />
+            ))
+          }
+        </Routes>
+      </main>
     </div>
   );
 };

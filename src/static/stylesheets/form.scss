@@ -1,0 +1,38 @@
+.form {
+  width: 700px;
+
+  &__section-header {
+    font-size: 1.25rem;
+    font-weight: 400;
+    padding-bottom: 1rem;
+  }
+
+  &__input-label {
+    font-size: 0.95rem;
+
+    &--required {
+      color: $red;
+      font-size: 1.2rem;
+      font-weight: 500;
+      vertical-align: middle;
+    }
+  }
+
+  &__input-description {
+    color: $gray3;
+    font-size: 0.9rem;
+  }
+
+  input[type="text"],
+  textarea,
+  select {
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+
+  input[type="text"],
+  textarea,
+  select:not(:last-child) {
+    margin-bottom: 1rem;
+  }
+}

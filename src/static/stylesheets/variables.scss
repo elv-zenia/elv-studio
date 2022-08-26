@@ -4,11 +4,17 @@ $tablet-breakpoint: 850px;
 $mobile-breakpoint: 600px;
 
 $gray: #565656;
-$gray2: #717171;
+$gray2: #ededed;
+$gray3: #404040;
+$gray4: #c6c6c6;
 $blue: #1a65d6;
 $blue2: #436cde;
+$blue3: #7cb8f9;
 $black: #000;
 $white: #fff;
+$red: #e10707;
+
+$translucent-blue: rgba($blue, 0.2);
 
 @mixin component {
   background: var(--background-component-primary);

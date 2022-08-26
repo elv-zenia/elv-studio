@@ -45,7 +45,8 @@ module.exports = {
     alias: {
       "process": "process/browser",
       Assets: Path.resolve(__dirname, "src/static"),
-      Components: Path.resolve(__dirname, "src/components")
+      Components: Path.resolve(__dirname, "src/components"),
+      Stores: Path.resolve(__dirname, "src/stores")
     },
     fallback: {
       fs: false,

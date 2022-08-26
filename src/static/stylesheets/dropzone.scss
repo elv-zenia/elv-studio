@@ -1,0 +1,33 @@
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.5rem;
+  width: 400px;
+
+  &__area {
+    align-items: center;
+    border: 2px dashed $gray4;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    height: 300px;
+    justify-content: center;
+    margin-bottom: 1rem;
+    width: 100%;
+
+    &--active {
+      background-color: $translucent-blue;
+      border: 2px solid $blue;
+    }
+  }
+
+  &__instructions {
+    margin-top: 12px;
+  }
+
+  &__icon {
+    color: $gray;
+    height: 75px;
+    width: 125px;
+  }
+}
