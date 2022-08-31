@@ -35,4 +35,29 @@
   select:not(:last-child) {
     margin-bottom: 1rem;
   }
+
+  &__actions {
+    margin: 2rem 0 2.5rem;
+  }
+
+  &__object-details {
+    transition: all 0.5s;
+
+    &--visible {
+      display: block;
+    }
+
+    &--hidden {
+      display: none;
+    }
+  }
+
+  &__checkbox-container {
+    align-items: center;
+    display: flex;
+
+    label {
+      padding-right: 0.5rem;
+    }
+  }
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import {HashRouter, Navigate, Route, Routes} from "react-router-dom";
+import {HashRouter, Redirect, Route, Switch} from "react-router-dom";
 import {render} from "react-dom";
 import {Provider} from "mobx-react";
 
@@ -10,11 +10,12 @@ import {PageLoader} from "./components/common/Loader";
 import Jobs from "Components/ingest/Jobs";
 import Form from "Components/ingest/Form";
 import LeftNavigation from "Components/LeftNavigation";
+import JobDetails from "Components/ingest/JobDetails";
 
 const appRoutes = [
-  {path: "/", element: <Navigate replace to="/jobs" />},
-  {path: "/jobs", element: <Jobs />},
-  {path: "/new", element: <Form />}
+  {path: "/new", Component: Form},
+  {path: "/jobs", Component: Jobs},
+  {path: "/jobs/:id", Component: JobDetails},
 ];
 
 const App = () => {
@@ -24,13 +25,16 @@ const App = () => {
     <div className="app-container">
       <LeftNavigation />
       <main>
-        <Routes>
+        <Switch>
+          <Redirect exact from="/" to="/jobs" />
           {
-            appRoutes.map(({path, element}) => (
-              <Route exact={true} key={path} path={path} element={element} />
+            appRoutes.map(({path, Component}) => (
+              <Route exact={true} key={path} path={path}>
+                <Component />
+              </Route>
             ))
           }
-        </Routes>
+        </Switch>
       </main>
     </div>
   );

@@ -1,6 +1,6 @@
 import {configure, makeObservable, observable} from "mobx";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
-import IngestStore from "./IngestStore";
+import IngestStore from "Stores/IngestStore";
 
 // Force strict mode so mutations are only allowed within actions.
 configure({
@@ -9,31 +9,26 @@ configure({
 
 class RootStore {
   loaded = false;
-  client = undefined;
-  networkInfo = undefined;
-  libraries = undefined;
+  client;
+  networkInfo;
 
   constructor() {
     makeObservable(this, {
-      libraries: observable
+      // networkInfo: observable,
+      client: observable,
+      loaded: observable
     });
 
     this.Initialize();
     this.ingestStore = new IngestStore(this);
   }
 
-  get libraries() {
-    return this.libraries;
-  }
-
   Initialize = () => {
     try {
       this.client = new FrameClient({
         target: window.parent,
-        timeout: 240
+        timeout: 60
       });
-
-      // this.networkInfo = yield this.client.NetworkInfo();
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Failed to initialize application");

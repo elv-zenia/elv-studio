@@ -19,9 +19,11 @@ const LibraryWrapper = observer(({children}) => {
     }
   }, []);
 
-  if(loading) { return <PageLoader />; }
-
-  return children;
+  if(loading || !ingestStore.libraries) {
+    return <PageLoader />;
+  } else {
+    return children;
+  }
 });
 
 export default LibraryWrapper;

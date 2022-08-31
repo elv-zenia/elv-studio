@@ -4,14 +4,14 @@ import {useDropzone} from "react-dropzone";
 import ImageIcon from "Components/common/ImageIcon";
 import PictureIcon from "Assets/icons/image.svg";
 
-const Dropzone = ({accept, id, OnDrop}) => {
+const Dropzone = ({accept, id, onDrop}) => {
   const {
     getRootProps,
     getInputProps,
     isDragActive
   } = useDropzone({
     accept,
-    onDrop: OnDrop
+    onDrop
   });
 
   return (
