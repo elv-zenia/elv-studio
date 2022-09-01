@@ -16,6 +16,10 @@
       font-weight: 500;
       vertical-align: middle;
     }
+
+    &--disabled {
+      opacity: 0.5;
+    }
   }
 
   &__input-description {

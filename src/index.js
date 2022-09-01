@@ -7,10 +7,11 @@ import "Assets/stylesheets/app.scss";
 import * as Stores from "./stores";
 
 import {PageLoader} from "./components/common/Loader";
-import Jobs from "Components/ingest/Jobs";
+import Jobs from "Components/jobs/Jobs";
 import Form from "Components/ingest/Form";
 import LeftNavigation from "Components/LeftNavigation";
-import JobDetails from "Components/ingest/JobDetails";
+import JobDetails from "Components/jobs/JobDetails";
+import JobsWrapper from "Components/jobs/JobsWrapper";
 
 const appRoutes = [
   {path: "/new", Component: Form},
@@ -30,7 +31,9 @@ const App = () => {
           {
             appRoutes.map(({path, Component}) => (
               <Route exact={true} key={path} path={path}>
-                <Component />
+                <JobsWrapper>
+                  <Component />
+                </JobsWrapper>
               </Route>
             ))
           }

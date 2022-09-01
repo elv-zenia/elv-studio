@@ -53,7 +53,7 @@ class IngestStore {
       this.jobs[id],
       data
     );
-    console.log(toJS({id, data}))
+    console.log(toJS({id, data}));
     localStorage.setItem(
       "elv-jobs",
       btoa(JSON.stringify(this.jobs))
@@ -113,14 +113,20 @@ class IngestStore {
               objectId: libraryId.replace(/^ilib/, "iq__"),
               select: [
                 "public/name",
-                "abr"
+                "abr",
+                "elv/media/drm/fps/cert"
               ]
             }));
 
             this.libraries[libraryId] = {
               libraryId,
               name: response.public && response.public.name || libraryId,
-              abr: response.abr
+              abr: response.abr,
+              drmCert: response.elv &&
+                response.elv.media &&
+                response.elv.media.drm &&
+                response.elv.media.drm.fps &&
+                response.elv.media.drm.fps.cert
             };
           })
         );
@@ -144,7 +150,8 @@ class IngestStore {
     description,
     CreateCallback,
     s3Url,
-    s3Access
+    access=[],
+    copy
   }) {
     ValidateLibrary(libraryId);
 
@@ -193,14 +200,6 @@ class IngestStore {
 
     if(CreateCallback && typeof CreateCallback === "function") CreateCallback(masterObjectId);
 
-    // Create encryption conk
-    yield this.client.CreateEncryptionConk({
-      libraryId,
-      objectId: masterObjectId,
-      writeToken: response.write_token,
-      createKMSConk: true
-    });
-
     const UploadCallback = (progress) => {
       let uploadSum = 0;
       let totalSum = 0;
@@ -220,41 +219,30 @@ class IngestStore {
     };
 
     // Upload files
-    if(s3Url && s3Access) {
+    if(s3Url && access.length > 0) {
       const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+      const s3Reference = access[0];
 
-      const s3prefixMatch = (s3prefixRegex.exec(s3Url));
-      const bucket = s3prefixMatch[1];
+      const region = s3Reference.remote_access.storage_endpoint.region;
+      const bucket = s3Reference.remote_access.path.replace(/\/$/, "");
       const path = s3Url.replace(s3prefixRegex, "");
-      const {accessKey, secret, copy, region} = s3Access;
+      const accessKey = s3Reference.remote_access.cloud_credentials.access_key_id;
+      const secret = s3Reference.remote_access.cloud_credentials.secret_access_key;
 
-      console.log("upload payload", {
-        libraryId,
-        objectId: masterObjectId,
-        writeToken: response.write_token,
-        fileInfo: [
-          {path, source: s3Url}
-        ],
-        region,
-        bucket,
-        accessKey,
-        secret,
-        copy,
-        encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
-      });
       yield this.client.UploadFilesFromS3({
         libraryId,
         objectId: masterObjectId,
         writeToken: response.write_token,
-        fileInfo: [
-          {path, source: s3Url}
-        ],
+        fileInfo: [{
+          path,
+          source: s3Url
+        }],
         region,
         bucket,
         accessKey,
         secret,
         copy,
-        callback: UploadCallback,
+        callback: value => console.log("UPLOAD from S3", value),
         encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
       });
     } else {
@@ -270,6 +258,14 @@ class IngestStore {
       });
     }
 
+    // Create encryption conk
+    yield this.client.CreateEncryptionConk({
+      libraryId,
+      objectId: masterObjectId,
+      writeToken: response.write_token,
+      createKMSConk: true
+    });
+
     this.UpdateIngestObject({
       id: masterObjectId,
       data: {
@@ -282,13 +278,13 @@ class IngestStore {
     });
 
     // Bitcode method
-    const {errors} = yield this.client.CallBitcodeMethod({
+    const {logs, warnings, errors} = yield this.client.CallBitcodeMethod({
       libraryId,
       objectId: masterObjectId,
       writeToken: response.write_token,
       method: UrlJoin("media", "production_master", "init"),
       body: {
-        access: []
+        access
       },
       constant: false
     });
@@ -389,7 +385,11 @@ class IngestStore {
     return Object.assign(
       finalizeResponse, {
         abrProfile,
-        contentTypeId
+        contentTypeId,
+        access,
+        errors: errors || [],
+        logs: logs || [],
+        warnings: warnings || []
       }
     );
   });
@@ -405,7 +405,8 @@ class IngestStore {
     type,
     newObject=false,
     variant="default",
-    offeringKey="default"
+    offeringKey="default",
+    access=[]
   }) {
     try {
       const createResponse = yield this.client.CreateABRMezzanine({
@@ -428,7 +429,8 @@ class IngestStore {
 
       const { writeToken, hash } = yield this.client.StartABRMezzanineJobs({
         libraryId,
-        objectId
+        objectId,
+        access
       });
 
       yield this.WaitForPublish({
@@ -550,6 +552,7 @@ class IngestStore {
       });
 
       if(!production_master || !production_master.sources || !production_master.variants || !production_master.variants.default) {
+        console.error("Error: Unable to create ABR profile.");
         this.UpdateIngestErrors("errors", "Error: Unable to create ABR profile.");
         return;
       }

@@ -4,18 +4,19 @@ import {useDropzone} from "react-dropzone";
 import ImageIcon from "Components/common/ImageIcon";
 import PictureIcon from "Assets/icons/image.svg";
 
-const Dropzone = ({accept, id, onDrop}) => {
+const Dropzone = ({accept, id, onDrop, disabled}) => {
   const {
     getRootProps,
     getInputProps,
     isDragActive
   } = useDropzone({
     accept,
-    onDrop
+    onDrop,
+    disabled
   });
 
   return (
-    <section className="dropzone" id={id}>
+    <section className={`dropzone${disabled ? " dropzone--disabled" : ""}`} id={id}>
       <div {...getRootProps({
         className: `dropzone__area${isDragActive ? " dropzone__area--active" : ""}`
       })}>

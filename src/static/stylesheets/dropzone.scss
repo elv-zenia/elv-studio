@@ -30,4 +30,9 @@
     height: 75px;
     width: 125px;
   }
+
+  &--disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 }

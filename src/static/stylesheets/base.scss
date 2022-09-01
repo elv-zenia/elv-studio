@@ -84,6 +84,11 @@ textarea {
   box-sizing: border-box;
   font: var(--font-input);
   padding: 5px 10px;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 }
 
 input {

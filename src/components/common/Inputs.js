@@ -8,7 +8,8 @@ export const Select = ({
   required,
   defaultOption={},
   formName,
-  onChange
+  onChange,
+  disabled
 }) => {
   return (
     <>
@@ -21,14 +22,15 @@ export const Select = ({
         required={required}
         name={formName}
         onChange={onChange}
+        disabled={disabled}
       >
         {
           "label" in defaultOption && "value" in defaultOption ?
             <option value={defaultOption.value}>{defaultOption.label}</option> : null
         }
         {
-          options.map(({value, label}) => (
-            <option value={value} key={value}>
+          options.map(({value, label, disabled}) => (
+            <option value={value} key={value} disabled={disabled}>
               { label }
             </option>
           ))
@@ -45,11 +47,12 @@ export const Input = ({
   formName,
   onChange,
   placeholder,
-  type="text"
+  type="text",
+  disabled
 }) => {
   return (
     <>
-      <label className="form__input-label" htmlFor={formName}>
+      <label className={`form__input-label${disabled ? " form__input-label--disabled" : ""}`} htmlFor={formName}>
         { label }
         <span className="form__input-label--required">{ required ? " *" : ""}</span>
       </label>
@@ -60,6 +63,7 @@ export const Input = ({
         value={value || ""}
         onChange={onChange}
         placeholder={placeholder}
+        disabled={disabled}
       />
     </>
   );
@@ -70,11 +74,12 @@ export const TextArea = ({
   required,
   formName,
   onChange,
-  value
+  value,
+  disabled
 }) => {
   return (
     <>
-      <label className="form__input-label" htmlFor={formName}>
+      <label className={`form__input-label${disabled ? " form__input-label--disabled" : ""}`} htmlFor={formName}>
         { label }
         <span className="form__input-label--required">{ required ? " *" : ""}</span>
       </label>
@@ -83,6 +88,7 @@ export const TextArea = ({
         required={required}
         onChange={onChange}
         value={value || ""}
+        disabled={disabled}
       />
     </>
   );
@@ -138,16 +144,24 @@ export const JsonTextArea = ({
   );
 };
 
-export const Checkbox = ({label, formName, value, checked, onChange}) => {
+export const Checkbox = ({
+  label,
+  formName,
+  value,
+  checked,
+  onChange,
+  disabled
+}) => {
   return (
     <div className="form__checkbox-container">
-      <label htmlFor={formName} className="form__input-label">{ label }</label>
+      <label htmlFor={formName} className={`form__input-label${disabled ? " form__input-label--disabled" : ""}`}>{ label }</label>
       <input
         name={formName}
         type="checkbox"
         value={value}
         checked={checked}
         onChange={onChange}
+        disabled={disabled}
       />
     </div>
   );

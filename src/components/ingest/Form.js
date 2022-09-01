@@ -22,6 +22,7 @@ const Form = observer(() => {
   const [displayName, setDisplayName] = useState();
   const [playbackEncryption, setPlaybackEncryption] = useState();
   const [useMasterAsMez, setUseMasterAsMez] = useState(true);
+  const [disableDrm, setDisableDrm] = useState(false);
 
   const [s3Url, setS3Url] = useState();
   const [s3Region, setS3Region] = useState();
@@ -32,11 +33,12 @@ const Form = observer(() => {
   useEffect(() => {
     if(!ingestStore.libraries || !ingestStore.GetLibrary(masterLibrary)) { return; }
 
-    const abr = JSON.stringify(
-      ingestStore.GetLibrary(masterLibrary).abr, null, 2
-    ) || "";
+    const library = ingestStore.GetLibrary(masterLibrary);
+    const abr = JSON.stringify(library.abr, null, 2) || "";
+    const hasDrmCert = library.drmCert;
 
     setMasterAbr(abr);
+    setDisableDrm(!hasDrmCert);
   }, [masterLibrary]);
 
   useEffect(() => {
@@ -52,6 +54,10 @@ const Form = observer(() => {
   const HandleSubmit = async (event) => {
     event.preventDefault();
 
+    const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+    const s3prefixMatch = (s3prefixRegex.exec(s3Url));
+    const bucket = s3prefixMatch[1];
+
     const response = await ingestStore.CreateProductionMaster({
       libraryId: masterLibrary,
       abr: masterAbr,
@@ -62,12 +68,22 @@ const Form = observer(() => {
         console.log("create - id", id);
       },
       s3Url: uploadMethod === "s3" ? s3Url : undefined,
-      s3Access: uploadMethod === "s3" ? {
-        region: s3Region,
-        accessKey: s3AccessKey,
-        secret: s3Secret,
-        copy: s3Copy
-      } : undefined
+      access: uploadMethod === "s3" ? [{
+        path_matchers: [".*"],
+        remote_access: {
+          protocol: "s3",
+          platform: "aws",
+          path: bucket + "/",
+          storage_endpoint: {
+            region: s3Region
+          },
+          cloud_credentials: {
+            access_key_id: s3AccessKey,
+            secret_access_key: s3Secret
+          }
+        }
+      }] : undefined,
+      copy: s3Copy
     });
 
     console.log("master response", response);
@@ -81,7 +97,8 @@ const Form = observer(() => {
       name: useMasterAsMez ? masterName : mezName,
       description: useMasterAsMez ? masterDescription : mezDescription,
       displayName,
-      newObject: true
+      newObject: !useMasterAsMez,
+      access: response.access
     });
     console.log("mez response", mezResponse);
   };
@@ -190,18 +207,23 @@ const Form = observer(() => {
             Dropzone({
               accept: {"audio/*": [], "video/*": []},
               id: "main-dropzone",
-              onDrop: files => setFiles(files)
+              onDrop: files => setFiles(files),
+              disabled: uploadMethod !== "local"
             })
           }
-
-          <label>{ files.length === 1 ? "File:" : "Files:" }</label>
-          <div className="file-names">
-            {
-              files.map((file, index) => (
-                <div key={`${file.name || file.path}-${index}`}>{file.name || file.path}</div>
-              ))
-            }
-          </div>
+          {
+            uploadMethod === "local" &&
+              <>
+                <label>{ files.length === 1 ? "File:" : "Files:" }</label>
+                <div className="file-names">
+                  {
+                    files.map((file, index) => (
+                      <div key={`${file.name || file.path}-${index}`}>{file.name || file.path}</div>
+                    ))
+                  }
+                </div>
+              </>
+          }
 
           {/* S3 Details */}
           <Input
@@ -210,12 +232,14 @@ const Form = observer(() => {
             value={s3Url}
             onChange={event => setS3Url(event.target.value)}
             placeholder="s3://BUCKET_NAME/video.mp4"
+            disabled={uploadMethod !== "s3"}
           />
           <Input
             label="Region"
             formName="s3Region"
             value={s3Region}
             onChange={event => setS3Region(event.target.value)}
+            disabled={uploadMethod !== "s3"}
           />
           <Input
             label="Access key"
@@ -223,6 +247,7 @@ const Form = observer(() => {
             value={s3AccessKey}
             onChange={event => setS3AccessKey(event.target.value)}
             type="password"
+            disabled={uploadMethod !== "s3"}
           />
           <Input
             label="Secret"
@@ -230,12 +255,14 @@ const Form = observer(() => {
             value={s3Secret}
             onChange={event => setS3Secret(event.target.value)}
             type="password"
+            disabled={uploadMethod !== "s3"}
           />
           <Checkbox
             label="Copy file onto the fabric"
             value={s3Copy}
             checked={s3Copy}
             onChange={event => setS3Copy(event.target.value)}
+            disabled={uploadMethod !== "s3"}
           />
 
           <h1 className="form__section-header">Master Object Details</h1>
@@ -288,9 +315,9 @@ const Form = observer(() => {
             formName="playbackEncryption"
             required={true}
             options={[
-              {value: "drm", label: "Digital Rights Management"},
+              {value: "drm", label: "Digital Rights Management", disabled: disableDrm},
               {value: "clear", label: "Clear"},
-              {value: "both", label: "Both"},
+              {value: "both", label: "Both", disabled: disableDrm},
             ]}
             defaultOption={{
               value: "",

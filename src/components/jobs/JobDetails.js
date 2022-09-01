@@ -1,7 +1,7 @@
 import React from "react";
 import {useRouteMatch} from "react-router-dom";
 import {observer} from "mobx-react";
-import {ingestStore} from "../../stores";
+import {ingestStore} from "Stores";
 
 const JobDetails = observer(() => {
   const match = useRouteMatch();
