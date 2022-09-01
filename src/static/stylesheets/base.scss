@@ -70,11 +70,13 @@ textarea {
 }
 
 input[type="text"],
+input[type="password"],
 select {
   height: 35px;
 }
 
 input[type="text"],
+input[type="password"],
 select,
 textarea {
   border: var(--border-input);

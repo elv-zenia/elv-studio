@@ -1,4 +1,4 @@
-import {flow, makeAutoObservable} from "mobx";
+import {flow, makeAutoObservable, toJS} from "mobx";
 import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
 import {FileInfo} from "../utils/Files";
@@ -53,6 +53,7 @@ class IngestStore {
       this.jobs[id],
       data
     );
+    console.log(toJS({id, data}))
     localStorage.setItem(
       "elv-jobs",
       btoa(JSON.stringify(this.jobs))
@@ -141,7 +142,9 @@ class IngestStore {
     title,
     playbackEncryption="both",
     description,
-    CreateCallback
+    CreateCallback,
+    s3Url,
+    s3Access
   }) {
     ValidateLibrary(libraryId);
 
@@ -176,7 +179,6 @@ class IngestStore {
 
     if(!abr) { throw Error(`Library ${libraryId} is not set up for ingest.`); }
 
-    const fileInfo = yield FileInfo("", files);
     let response = yield this.client.CreateContentObject({
       libraryId,
       options: abr.mez_content_type ? { type: abr.mez_content_type } : {}
@@ -199,31 +201,74 @@ class IngestStore {
       createKMSConk: true
     });
 
-    // Upload files
-    yield this.client.UploadFiles({
-      libraryId,
-      objectId: masterObjectId,
-      writeToken: response.write_token,
-      fileInfo,
-      callback: (progress) => {
-        let uploadSum = 0;
-        let totalSum = 0;
-        Object.values(progress).forEach(fileProgress => {
-          uploadSum += fileProgress.uploaded;
-          totalSum += fileProgress.total;
-        });
+    const UploadCallback = (progress) => {
+      let uploadSum = 0;
+      let totalSum = 0;
+      Object.values(progress).forEach(fileProgress => {
+        uploadSum += fileProgress.uploaded;
+        totalSum += fileProgress.total;
+      });
 
-        this.UpdateIngestObject({
-          id: masterObjectId,
-          data: {
-            upload: {
-              percentage: Math.round((uploadSum / totalSum) * 100)
-            }
+      this.UpdateIngestObject({
+        id: masterObjectId,
+        data: {
+          upload: {
+            percentage: Math.round((uploadSum / totalSum) * 100)
           }
-        });
-      },
-      encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
-    });
+        }
+      });
+    };
+
+    // Upload files
+    if(s3Url && s3Access) {
+      const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+
+      const s3prefixMatch = (s3prefixRegex.exec(s3Url));
+      const bucket = s3prefixMatch[1];
+      const path = s3Url.replace(s3prefixRegex, "");
+      const {accessKey, secret, copy, region} = s3Access;
+
+      console.log("upload payload", {
+        libraryId,
+        objectId: masterObjectId,
+        writeToken: response.write_token,
+        fileInfo: [
+          {path, source: s3Url}
+        ],
+        region,
+        bucket,
+        accessKey,
+        secret,
+        copy,
+        encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
+      });
+      yield this.client.UploadFilesFromS3({
+        libraryId,
+        objectId: masterObjectId,
+        writeToken: response.write_token,
+        fileInfo: [
+          {path, source: s3Url}
+        ],
+        region,
+        bucket,
+        accessKey,
+        secret,
+        copy,
+        callback: UploadCallback,
+        encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
+      });
+    } else {
+      const fileInfo = yield FileInfo("", files);
+
+      yield this.client.UploadFiles({
+        libraryId,
+        objectId: masterObjectId,
+        writeToken: response.write_token,
+        fileInfo,
+        callback: UploadCallback,
+        encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
+      });
+    }
 
     this.UpdateIngestObject({
       id: masterObjectId,
@@ -348,14 +393,6 @@ class IngestStore {
       }
     );
   });
-
-  Test = flow(function *({libraryId, objectId, metadataSubtree}) {
-    return yield this.client.ContentObjectMetadata({
-      libraryId,
-      objectId,
-      metadataSubtree
-    });
-  })
 
   CreateABRMezzanine = flow(function * ({
     libraryId,

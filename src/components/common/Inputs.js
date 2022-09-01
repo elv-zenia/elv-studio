@@ -43,7 +43,9 @@ export const Input = ({
   required,
   value,
   formName,
-  onChange
+  onChange,
+  placeholder,
+  type="text"
 }) => {
   return (
     <>
@@ -52,11 +54,12 @@ export const Input = ({
         <span className="form__input-label--required">{ required ? " *" : ""}</span>
       </label>
       <input
-        type="text"
+        type={type}
         name={formName}
         required={required}
         value={value || ""}
         onChange={onChange}
+        placeholder={placeholder}
       />
     </>
   );
@@ -142,10 +145,38 @@ export const Checkbox = ({label, formName, value, checked, onChange}) => {
       <input
         name={formName}
         type="checkbox"
-        value={value || ""}
+        value={value}
         checked={checked}
         onChange={onChange}
       />
+    </div>
+  );
+};
+
+export const Radio = ({label, formName, required, options=[]}) => {
+  return (
+    <div className="form__radio-container">
+      <p className="form__input-label">
+        { label }
+        <span className="form__input-label--required">{ required ? " *" : ""}</span>
+      </p>
+      {
+        options.map(({optionLabel, id, value, checked, onChange}) => (
+          <div key={`radio-option-${id}`}>
+            <input
+              name={formName}
+              id={id}
+              type="radio"
+              value={value}
+              checked={checked}
+              onChange={onChange}
+            />
+            <label htmlFor={id}>
+              { optionLabel }
+            </label>
+          </div>
+        ))
+      }
     </div>
   );
 };

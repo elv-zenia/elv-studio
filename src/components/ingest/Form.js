@@ -4,9 +4,10 @@ import {observer} from "mobx-react";
 import {ingestStore} from "Stores";
 import Dropzone from "Components/common/Dropzone";
 import LibraryWrapper from "Components/LibraryWrapper";
-import {Input, TextArea, Select, JsonTextArea, Checkbox} from "Components/common/Inputs";
+import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components/common/Inputs";
 
 const Form = observer(() => {
+  const [uploadMethod, setUploadMethod] = useState("local");
   const [files, setFiles] = useState([]);
   const [masterAbr, setMasterAbr] = useState();
   const [masterLibrary, setMasterLibrary] = useState();
@@ -19,9 +20,14 @@ const Form = observer(() => {
   const [mezAbr, setMezAbr] = useState();
 
   const [displayName, setDisplayName] = useState();
-  const [s3Url, setS3Url] = useState();
   const [playbackEncryption, setPlaybackEncryption] = useState();
   const [useMasterAsMez, setUseMasterAsMez] = useState(true);
+
+  const [s3Url, setS3Url] = useState();
+  const [s3Region, setS3Region] = useState();
+  const [s3AccessKey, setS3AccessKey] = useState();
+  const [s3Secret, setS3Secret] = useState();
+  const [s3Copy, setS3Copy] = useState(false);
 
   useEffect(() => {
     if(!ingestStore.libraries || !ingestStore.GetLibrary(masterLibrary)) { return; }
@@ -49,31 +55,26 @@ const Form = observer(() => {
     const response = await ingestStore.CreateProductionMaster({
       libraryId: masterLibrary,
       abr: masterAbr,
-      files,
+      files: uploadMethod === "local" ? files : undefined,
       title: masterName,
       description: masterDescription,
       CreateCallback: id => {
         console.log("create - id", id);
-      }
+      },
+      s3Url: uploadMethod === "s3" ? s3Url : undefined,
+      s3Access: uploadMethod === "s3" ? {
+        region: s3Region,
+        accessKey: s3AccessKey,
+        secret: s3Secret,
+        copy: s3Copy
+      } : undefined
     });
 
     console.log("master response", response);
 
-    console.log("mez args", {
-      libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
-      masterObjectId: response.id,
-      masterVersionHash: response.hash,
-      abrProfile: response.abrProfile,
-      type: response.contentTypeId,
-      name: useMasterAsMez ? masterName : mezName,
-      description: useMasterAsMez ? masterDescription : mezDescription,
-      displayName,
-      newObject: true
-    });
-
     const mezResponse = await ingestStore.CreateABRMezzanine({
       libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
-      masterObjectId: useMasterAsMez ? response.id : undefined,
+      masterObjectId: response.id,
       masterVersionHash: response.hash,
       abrProfile: response.abrProfile,
       type: response.contentTypeId,
@@ -163,7 +164,28 @@ const Form = observer(() => {
       <div className="page-container">
         <div className="page__header">Ingest New Media</div>
         <form className="form" onSubmit={HandleSubmit}>
-          <label className="form__input-label">Upload</label>
+          <Radio
+            label="Upload Method:"
+            required={true}
+            formName="uploadMethod"
+            options={[
+              {
+                optionLabel: "Local file",
+                id: "local",
+                value: "local",
+                checked: uploadMethod === "local",
+                onChange: event => setUploadMethod(event.target.value)
+              },
+              {
+                optionLabel: "S3 URI",
+                id: "s3",
+                value: "s3",
+                checked: uploadMethod === "s3",
+                onChange: event => setUploadMethod(event.target.value)
+              }
+            ]}
+          />
+
           {
             Dropzone({
               accept: {"audio/*": [], "video/*": []},
@@ -171,6 +193,7 @@ const Form = observer(() => {
               onDrop: files => setFiles(files)
             })
           }
+
           <label>{ files.length === 1 ? "File:" : "Files:" }</label>
           <div className="file-names">
             {
@@ -180,10 +203,39 @@ const Form = observer(() => {
             }
           </div>
 
+          {/* S3 Details */}
           <Input
             label="Or upload from an S3 URL"
-            formName="s3Url" value={s3Url}
+            formName="s3Url"
+            value={s3Url}
             onChange={event => setS3Url(event.target.value)}
+            placeholder="s3://BUCKET_NAME/video.mp4"
+          />
+          <Input
+            label="Region"
+            formName="s3Region"
+            value={s3Region}
+            onChange={event => setS3Region(event.target.value)}
+          />
+          <Input
+            label="Access key"
+            formName="s3AccessKey"
+            value={s3AccessKey}
+            onChange={event => setS3AccessKey(event.target.value)}
+            type="password"
+          />
+          <Input
+            label="Secret"
+            formName="s3Secret"
+            value={s3Secret}
+            onChange={event => setS3Secret(event.target.value)}
+            type="password"
+          />
+          <Checkbox
+            label="Copy file onto the fabric"
+            value={s3Copy}
+            checked={s3Copy}
+            onChange={event => setS3Copy(event.target.value)}
           />
 
           <h1 className="form__section-header">Master Object Details</h1>
