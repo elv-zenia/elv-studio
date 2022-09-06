@@ -25,11 +25,6 @@ module.exports = {
     }
   },
   plugins: [
-    new CopyWebpackPlugin({
-      patterns: [
-        { from: Path.join(__dirname, "configuration.js"), to: Path.join(__dirname, "dist", "configuration.js") }
-      ]
-    }),
     new HTMLWebpackPlugin({
       template: Path.join(__dirname, "src", "index.html"),
       title: "Eluvio Studio",
