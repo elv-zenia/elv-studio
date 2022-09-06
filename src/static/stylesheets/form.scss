@@ -66,4 +66,10 @@
       padding-right: 0.5rem;
     }
   }
+
+  &__json-field {
+    &--invalid {
+      outline: 2px solid $red;
+    }
+  }
 }

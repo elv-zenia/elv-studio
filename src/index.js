@@ -1,7 +1,7 @@
 import React from "react";
 import {HashRouter, Redirect, Route, Switch} from "react-router-dom";
 import {render} from "react-dom";
-import {Provider} from "mobx-react";
+import {observer, Provider} from "mobx-react";
 
 import "Assets/stylesheets/app.scss";
 import * as Stores from "./stores";
@@ -19,7 +19,7 @@ const appRoutes = [
   {path: "/jobs/:id", Component: JobDetails},
 ];
 
-const App = () => {
+const App = observer(() => {
   if(!rootStore.loaded) { return <PageLoader />; }
 
   return (
@@ -41,7 +41,7 @@ const App = () => {
       </main>
     </div>
   );
-};
+});
 
 render(
   <Provider {...Stores}>

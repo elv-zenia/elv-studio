@@ -7,7 +7,7 @@
     "declaration-colon-space-before": "never",
     "scss/dollar-variable-empty-line-before": null,
     "keyframes-name-pattern": null,
-    "max-nesting-depth": 3,
+    "max-nesting-depth": 5,
     "max-empty-lines": 1,
     "no-missing-end-of-source-newline": true,
     "number-leading-zero": null,

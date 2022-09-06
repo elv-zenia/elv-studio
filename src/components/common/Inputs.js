@@ -48,7 +48,8 @@ export const Input = ({
   onChange,
   placeholder,
   type="text",
-  disabled
+  disabled,
+  hidden
 }) => {
   return (
     <>
@@ -64,6 +65,7 @@ export const Input = ({
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
+        hidden={hidden}
       />
     </>
   );
@@ -138,7 +140,7 @@ export const JsonTextArea = ({
         aria-errormessage={error}
         onChange={event => setModifiedJSON(event.target.value)}
         onBlur={HandleChange}
-        className="form__json-field"
+        className={`form__json-field${error ? " form__json-field--invalid" : ""}`}
       />
     </>
   );

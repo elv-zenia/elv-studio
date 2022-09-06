@@ -17,7 +17,7 @@ const Form = observer(() => {
   const [masterDescription, setMasterDescription] = useState();
   const [mezName, setMezName] = useState();
   const [mezDescription, setMezDescription] = useState();
-  const [mezAbr, setMezAbr] = useState();
+  // const [mezAbr, setMezAbr] = useState();
 
   const [displayName, setDisplayName] = useState();
   const [playbackEncryption, setPlaybackEncryption] = useState();
@@ -29,6 +29,8 @@ const Form = observer(() => {
   const [s3AccessKey, setS3AccessKey] = useState();
   const [s3Secret, setS3Secret] = useState();
   const [s3Copy, setS3Copy] = useState(false);
+  const [s3PresignedUrl, setS3PresignedUrl] = useState();
+  const [s3UseAKSecret, setS3UseAKSecret] = useState(false);
 
   useEffect(() => {
     if(!ingestStore.libraries || !ingestStore.GetLibrary(masterLibrary)) { return; }
@@ -41,34 +43,44 @@ const Form = observer(() => {
     setDisableDrm(!hasDrmCert);
   }, [masterLibrary]);
 
-  useEffect(() => {
-    if(!ingestStore.libraries || !ingestStore.GetLibrary(mezLibrary)) { return; }
+  // useEffect(() => {
+  //   if(!ingestStore.libraries || !ingestStore.GetLibrary(mezLibrary)) { return; }
+  //
+  //   const abr = JSON.stringify(
+  //     ingestStore.GetLibrary(mezLibrary).abr, null, 2
+  //   ) || "";
+  //
+  //   setMezAbr(abr);
+  // }, [mezLibrary]);
 
-    const abr = JSON.stringify(
-      ingestStore.GetLibrary(mezLibrary).abr, null, 2
-    ) || "";
-
-    setMezAbr(abr);
-  }, [mezLibrary]);
+  const DropzoneComponent = () => {
+    return Dropzone({
+      accept: {"audio/*": [], "video/*": []},
+      id: "main-dropzone",
+      onDrop: files => setFiles(files),
+      hide: uploadMethod === "s3"
+    });
+  };
 
   const HandleSubmit = async (event) => {
     event.preventDefault();
 
-    const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
-    const s3prefixMatch = (s3prefixRegex.exec(s3Url));
-    const bucket = s3prefixMatch[1];
+    let access = [];
+    if(uploadMethod === "s3") {
+      const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+      const s3prefixMatch = (s3prefixRegex.exec(s3Url));
+      const bucket = s3prefixMatch[1];
 
-    const response = await ingestStore.CreateProductionMaster({
-      libraryId: masterLibrary,
-      abr: masterAbr,
-      files: uploadMethod === "local" ? files : undefined,
-      title: masterName,
-      description: masterDescription,
-      CreateCallback: id => {
-        console.log("create - id", id);
-      },
-      s3Url: uploadMethod === "s3" ? s3Url : undefined,
-      access: uploadMethod === "s3" ? [{
+      const cloudCredentials = s3UseAKSecret ?
+        {
+          access_key_id: s3AccessKey,
+          secret_access_key: s3Secret
+        } :
+        {
+          signed_url: s3PresignedUrl
+        };
+
+      access = [{
         path_matchers: [".*"],
         remote_access: {
           protocol: "s3",
@@ -77,12 +89,19 @@ const Form = observer(() => {
           storage_endpoint: {
             region: s3Region
           },
-          cloud_credentials: {
-            access_key_id: s3AccessKey,
-            secret_access_key: s3Secret
-          }
+          cloud_credentials: cloudCredentials
         }
-      }] : undefined,
+      }];
+    }
+
+    const response = await ingestStore.CreateProductionMaster({
+      libraryId: masterLibrary,
+      abr: masterAbr,
+      files: uploadMethod === "local" ? files : undefined,
+      title: masterName,
+      description: masterDescription,
+      s3Url: uploadMethod === "s3" ? s3Url : undefined,
+      access,
       copy: s3Copy
     });
 
@@ -146,13 +165,13 @@ const Form = observer(() => {
         onChange={event => setMezLibrary(event.target.value)}
       />
 
-      {
-        LibraryAbrInput({
-          onChange: event => setMezAbr(event.target.value),
-          library: mezLibrary,
-          value: mezAbr
-        })
-      }
+      {/*{*/}
+      {/*  LibraryAbrInput({*/}
+      {/*    onChange: event => setMezAbr(event.target.value),*/}
+      {/*    library: mezLibrary,*/}
+      {/*    value: mezAbr*/}
+      {/*  })*/}
+      {/*}*/}
 
       <Input
         label="Name"
@@ -183,7 +202,6 @@ const Form = observer(() => {
         <form className="form" onSubmit={HandleSubmit}>
           <Radio
             label="Upload Method:"
-            required={true}
             formName="uploadMethod"
             options={[
               {
@@ -203,14 +221,7 @@ const Form = observer(() => {
             ]}
           />
 
-          {
-            Dropzone({
-              accept: {"audio/*": [], "video/*": []},
-              id: "main-dropzone",
-              onDrop: files => setFiles(files),
-              disabled: uploadMethod !== "local"
-            })
-          }
+          { DropzoneComponent() }
           {
             uploadMethod === "local" &&
               <>
@@ -226,44 +237,71 @@ const Form = observer(() => {
           }
 
           {/* S3 Details */}
-          <Input
-            label="Or upload from an S3 URL"
-            formName="s3Url"
-            value={s3Url}
-            onChange={event => setS3Url(event.target.value)}
-            placeholder="s3://BUCKET_NAME/video.mp4"
-            disabled={uploadMethod !== "s3"}
-          />
-          <Input
-            label="Region"
-            formName="s3Region"
-            value={s3Region}
-            onChange={event => setS3Region(event.target.value)}
-            disabled={uploadMethod !== "s3"}
-          />
-          <Input
-            label="Access key"
-            formName="s3AccessKey"
-            value={s3AccessKey}
-            onChange={event => setS3AccessKey(event.target.value)}
-            type="password"
-            disabled={uploadMethod !== "s3"}
-          />
-          <Input
-            label="Secret"
-            formName="s3Secret"
-            value={s3Secret}
-            onChange={event => setS3Secret(event.target.value)}
-            type="password"
-            disabled={uploadMethod !== "s3"}
-          />
-          <Checkbox
-            label="Copy file onto the fabric"
-            value={s3Copy}
-            checked={s3Copy}
-            onChange={event => setS3Copy(event.target.value)}
-            disabled={uploadMethod !== "s3"}
-          />
+          {
+            uploadMethod === "s3" && <>
+              <Input
+                label="Or upload from an S3 URL"
+                formName="s3Url"
+                value={s3Url}
+                onChange={event => setS3Url(event.target.value)}
+                placeholder="s3://BUCKET_NAME/video.mp4"
+                required={uploadMethod === "s3"}
+              />
+
+              <Input
+                label="Region"
+                formName="s3Region"
+                value={s3Region}
+                onChange={event => setS3Region(event.target.value)}
+                required={uploadMethod === "s3"}
+              />
+
+              <Checkbox
+                label="Use access key and secret"
+                value={s3UseAKSecret}
+                checked={s3UseAKSecret}
+                onChange={event => setS3UseAKSecret(event.target.checked)}
+              />
+
+              {
+                !s3UseAKSecret &&
+                <TextArea
+                  label="Pre-signed URL"
+                  value={s3PresignedUrl}
+                  onChange={event => setS3PresignedUrl(event.target.value)}
+                />
+              }
+              {
+                s3UseAKSecret &&
+                  <>
+                    <Input
+                      label="Access key"
+                      formName="s3AccessKey"
+                      value={s3AccessKey}
+                      onChange={event => setS3AccessKey(event.target.value)}
+                      type="password"
+                      required={uploadMethod === "s3"}
+                    />
+
+                    <Input
+                      label="Secret"
+                      formName="s3Secret"
+                      value={s3Secret}
+                      onChange={event => setS3Secret(event.target.value)}
+                      type="password"
+                      required={uploadMethod === "s3"}
+                    />
+                  </>
+              }
+
+              <Checkbox
+                label="Copy file onto the fabric"
+                value={s3Copy}
+                checked={s3Copy}
+                onChange={event => setS3Copy(event.target.checked)}
+              />
+            </>
+          }
 
           <h1 className="form__section-header">Master Object Details</h1>
           <Select

@@ -1,0 +1,39 @@
+.table {
+  display: table;
+  width: 600px;
+
+  &__head {
+    display: table-header-group;
+    font-weight: 500;
+    padding: 1rem;
+
+    &__row {
+      display: table-row;
+    }
+  }
+
+  &__body {
+    display: table-row-group;
+
+    &__row {
+      display: table-row;
+
+      td {
+        display: table-cell;
+      }
+
+      &--clickable {
+        cursor: pointer;
+
+        &:hover {
+          background-color: $gray2;
+        }
+      }
+    }
+  }
+
+  &__column {
+    display: table-cell;
+    padding: 1rem;
+  }
+}

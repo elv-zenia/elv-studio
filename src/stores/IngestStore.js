@@ -10,7 +10,8 @@ const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
 class IngestStore {
   libraries;
   loaded;
-  jobs = {};
+  jobs;
+  job;
   ingestErrors = {
     errors: [],
     warnings: []
@@ -33,8 +34,12 @@ class IngestStore {
     return this.libraries[libraryId];
   }
 
-  GetIngestJob = (jobId) => {
-    return this.jobs[jobId];
+  SetJob(jobId) {
+    this.job = this.jobs[jobId];
+  }
+
+  UpdateIngestJobs({jobs}) {
+    this.jobs = jobs;
   }
 
   UpdateIngestObject = ({id, data}) => {
@@ -53,12 +58,11 @@ class IngestStore {
       this.jobs[id],
       data
     );
-    console.log(toJS({id, data}));
     localStorage.setItem(
       "elv-jobs",
       btoa(JSON.stringify(this.jobs))
     );
-    console.log("jobs", this.jobs);
+    console.log("jobs", toJS(this.jobs));
   }
 
   UpdateIngestErrors = (type, message) => {
@@ -81,8 +85,8 @@ class IngestStore {
     }
   });
 
-  GenerateEmbedUrl = flow (function * ({versionHash, objectId}) {
-    const networkInfo = yield this.client.NetworkInfo();
+  GenerateEmbedUrl = ({versionHash, objectId}) => {
+    const networkInfo = rootStore.networkInfo;
     let embedUrl = new URL("https://embed.v3.contentfabric.io");
     const networkName = networkInfo.name === "demov3" ? "demo" : (networkInfo.name === "test" && networkInfo.id === 955205) ? "testv4" : networkInfo.name;
 
@@ -98,7 +102,7 @@ class IngestStore {
     }
 
     return embedUrl.toString();
-  });
+  };
 
   LoadLibraries = flow(function * () {
     try {
@@ -141,6 +145,59 @@ class IngestStore {
     }
   });
 
+  LibraryAbrData = flow(function * ({libraryId, abr}) {
+    if(abr) {
+      const libraryObjectId = libraryId.replace("ilib", "iq__");
+      abr = ParseInputJson(abr);
+
+      yield this.client.EditAndFinalizeContentObject({
+        libraryId,
+        objectId: libraryObjectId,
+        commitMessage: "Updated abr profile",
+        callback: async ({writeToken}) => {
+          await this.client.ReplaceMetadata({
+            libraryId,
+            objectId: libraryObjectId,
+            writeToken,
+            metadataSubtree: "abr",
+            metadata: abr
+          });
+        }
+      });
+    }
+
+    const {qid} = yield this.client.ContentLibrary({libraryId});
+    const abrResponse = yield this.client.ContentObjectMetadata({
+      libraryId: yield this.client.ContentObjectLibraryId({objectId: qid}),
+      objectId: qid,
+      metadataSubtree: "/abr"
+    });
+
+    return abrResponse;
+  });
+
+  CreateContentObject = flow(function * ({libraryId, mezContentType, formData}) {
+    const response = yield this.client.CreateContentObject({
+      libraryId,
+      options: mezContentType ? { type: mezContentType } : {}
+    });
+
+    formData.masterObjectId = response.id;
+
+    this.UpdateIngestObject({
+      id: response.id,
+      data: {
+        currentStep: "create",
+        formData,
+        create: {
+          complete: true
+        }
+      }
+    });
+
+    return response;
+  });
+
   CreateProductionMaster = flow(function * ({
     libraryId,
     abr,
@@ -148,14 +205,14 @@ class IngestStore {
     title,
     playbackEncryption="both",
     description,
-    CreateCallback,
     s3Url,
     access=[],
-    copy
+    signedUrl,
+    copy,
   }) {
     ValidateLibrary(libraryId);
 
-    // Add ABR metadata to library if form changes were made
+    // // Add ABR metadata to library if form changes were made
     if(abr) {
       const libraryObjectId = libraryId.replace("ilib", "iq__");
       abr = ParseInputJson(abr);
@@ -192,13 +249,23 @@ class IngestStore {
     });
 
     const masterObjectId = response.id;
+    const writeToken = response.write_token;
 
     this.UpdateIngestObject({
       id: masterObjectId,
-      data: {currentStep: "upload"}
+      data: {
+        ...this.jobs[masterObjectId],
+        currentStep: "upload",
+      }
     });
 
-    if(CreateCallback && typeof CreateCallback === "function") CreateCallback(masterObjectId);
+    // Create encryption conk
+    yield this.client.CreateEncryptionConk({
+      libraryId,
+      objectId: masterObjectId,
+      writeToken,
+      createKMSConk: true
+    });
 
     const UploadCallback = (progress) => {
       let uploadSum = 0;
@@ -211,6 +278,7 @@ class IngestStore {
       this.UpdateIngestObject({
         id: masterObjectId,
         data: {
+          ...this.jobs[masterObjectId],
           upload: {
             percentage: Math.round((uploadSum / totalSum) * 100)
           }
@@ -232,7 +300,7 @@ class IngestStore {
       yield this.client.UploadFilesFromS3({
         libraryId,
         objectId: masterObjectId,
-        writeToken: response.write_token,
+        writeToken,
         fileInfo: [{
           path,
           source: s3Url
@@ -241,6 +309,7 @@ class IngestStore {
         bucket,
         accessKey,
         secret,
+        signedUrl,
         copy,
         callback: value => console.log("UPLOAD from S3", value),
         encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
@@ -251,24 +320,17 @@ class IngestStore {
       yield this.client.UploadFiles({
         libraryId,
         objectId: masterObjectId,
-        writeToken: response.write_token,
+        writeToken,
         fileInfo,
         callback: UploadCallback,
         encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
       });
     }
 
-    // Create encryption conk
-    yield this.client.CreateEncryptionConk({
-      libraryId,
-      objectId: masterObjectId,
-      writeToken: response.write_token,
-      createKMSConk: true
-    });
-
     this.UpdateIngestObject({
       id: masterObjectId,
       data: {
+        ...this.jobs[masterObjectId],
         upload: {
           ...this.jobs[masterObjectId].upload,
           complete: true,
@@ -281,7 +343,7 @@ class IngestStore {
     const {logs, warnings, errors} = yield this.client.CallBitcodeMethod({
       libraryId,
       objectId: masterObjectId,
-      writeToken: response.write_token,
+      writeToken,
       method: UrlJoin("media", "production_master", "init"),
       body: {
         access
@@ -299,13 +361,14 @@ class IngestStore {
     const streams = (yield this.client.ContentObjectMetadata({
       libraryId,
       objectId: masterObjectId,
-      writeToken: response.write_token,
+      writeToken,
       metadataSubtree: UrlJoin("production_master", "variants", "default", "streams")
     }));
 
     this.UpdateIngestObject({
       id: masterObjectId,
       data: {
+        ...this.jobs[masterObjectId],
         upload: {
           ...this.jobs[masterObjectId].upload,
           streams: Object.keys(streams || {})
@@ -317,7 +380,7 @@ class IngestStore {
     yield this.client.MergeMetadata({
       libraryId,
       objectId: masterObjectId,
-      writeToken: response.write_token,
+      writeToken,
       metadata: {
         public: {
           name: `${title} [ingest: uploading] MASTER`,
@@ -335,7 +398,7 @@ class IngestStore {
     let {abrProfile, contentTypeId} = yield this.CreateABRLadder({
       libraryId,
       objectId: masterObjectId,
-      writeToken: response.write_token,
+      writeToken,
       abr
     });
 
@@ -343,7 +406,7 @@ class IngestStore {
     yield this.client.MergeMetadata({
       libraryId,
       objectId: masterObjectId,
-      writeToken: response.write_token,
+      writeToken,
       metadata: {
         public: {
           name: `${title} MASTER`,
@@ -361,7 +424,7 @@ class IngestStore {
     const finalizeResponse = yield this.client.FinalizeContentObject({
       libraryId,
       objectId: masterObjectId,
-      writeToken: response.write_token,
+      writeToken,
       commitMessage: "Create master object",
       awaitCommitConfirmation: false
     });
@@ -476,11 +539,29 @@ class IngestStore {
           this.UpdateIngestObject({
             id: masterObjectId,
             data: {
+              ...this.jobs[masterObjectId],
               mezObjectId: objectId,
               ingest: {
                 runState: run_state,
                 estimatedTimeLeft:
-                !estimated_time_left_seconds ? "Calculating..." : estimated_time_left_h_m_s
+                (!estimated_time_left_seconds && run_state === "running") ? "Calculating..." : estimated_time_left_h_m_s ? `${estimated_time_left_h_m_s} remaining` : ""
+              },
+              formData: {
+                ...this.jobs[masterObjectId].formData,
+                mez: {
+                  libraryId,
+                  masterObjectId,
+                  abrProfile,
+                  name,
+                  description,
+                  displayName,
+                  masterVersionHash,
+                  type,
+                  newObject,
+                  variant,
+                  offeringKey,
+                  access
+                }
               }
             }
           });
@@ -489,7 +570,7 @@ class IngestStore {
             clearInterval(statusIntervalId);
             done = true;
 
-            const embedUrl = await this.GenerateEmbedUrl({
+            const embedUrl = this.GenerateEmbedUrl({
               objectId: masterObjectId
             });
 
@@ -584,6 +665,7 @@ class IngestStore {
     this.UpdateIngestObject({
       id: masterObjectId,
       data: {
+        ...this.jobs[masterObjectId],
         currentStep: "finalize"
       }
     });
@@ -597,7 +679,9 @@ class IngestStore {
       this.UpdateIngestObject({
         id: masterObjectId,
         data: {
+          ...this.jobs[masterObjectId],
           finalize: {
+            complete: true,
             mezzanineHash: finalizeAbrResponse.hash,
             objectId: finalizeAbrResponse.id
           }

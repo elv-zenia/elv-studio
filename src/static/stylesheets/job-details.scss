@@ -1,0 +1,32 @@
+.job-details {
+  &__section-header {
+    margin-bottom: 1rem;
+  }
+
+  &__card {
+    align-items: center;
+    background-color: $gray5;
+    border-radius: 7px;
+    display: flex;
+    margin-bottom: 1rem;
+    padding: 1.5rem 1rem;
+    width: 500px;
+
+    &__icon {
+      height: 20px;
+      margin-left: auto;
+      width: 20px;
+    }
+
+    &__text {
+      display: flex;
+      flex-direction: column;
+
+      &__description {
+        font-size: 0.875rem;
+        font-weight: 400;
+        padding-top: 0.25rem;
+      }
+    }
+  }
+}
