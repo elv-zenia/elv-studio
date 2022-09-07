@@ -1,0 +1,22 @@
+.copyable {
+  -ms-flex-align: center;
+  -webkit-box-align: center;
+  align-items: center;
+  display: flex;
+
+  & > div {
+    -ms-flex-positive: 1;
+    -webkit-box-flex: 1;
+    flex-grow: 1;
+    max-width: 560px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__icon {
+    height: 1.2em;
+    margin-left: 0.5rem;
+    width: 1.2em;
+  }
+}

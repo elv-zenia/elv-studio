@@ -1,13 +1,14 @@
 import React, {useEffect} from "react";
 import {useRouteMatch} from "react-router-dom";
 import {observer} from "mobx-react";
+import {toJS} from "mobx";
 
 import {ingestStore} from "Stores";
 import ImageIcon from "Components/common/ImageIcon";
 import {PageLoader} from "Components/common/Loader";
+import {Copyable} from "Components/common/Copyable";
 import CheckmarkIcon from "Assets/icons/check.svg";
 import LoadingIcon from "Assets/icons/loading.gif";
-import {toJS} from "mobx";
 
 const JobDetails = observer(() => {
   const match = useRouteMatch();
@@ -18,6 +19,17 @@ const JobDetails = observer(() => {
 
     HandleIngest();
   }, []);
+
+  const OpenObjectLink = ({libraryId, objectId}) => {
+    rootStore.client.SendMessage({
+      options: {
+        operation: "OpenLink",
+        libraryId,
+        objectId
+      },
+      noResponse: true
+    });
+  };
 
   const HandleIngest = async () => {
     if(ingestStore.job.currentStep !== "create" || !ingestStore.job.create.complete) { return; }
@@ -104,14 +116,35 @@ const JobDetails = observer(() => {
         {
           ingestStore.jobs[jobId].finalize.mezzanineHash &&
             <>
-              <h1 className="job-details__section-header">File Details</h1>
-              <div className="job-details__section-flexbox">
-                <span>Mezzanine hash</span>
-                <span>{ ingestStore.jobs[jobId].finalize.mezzanineHash }</span>
+              <h1 className="job-details__section-header">Mezzanine Object Details</h1>
+              <div className="job-details__card job-details__card--secondary">
+                <div className="job-details__card__text">
+                  <div>Hash</div>
+                  <Copyable
+                    className="job-details__card__text__description"
+                    copy={ingestStore.jobs[jobId].finalize.mezzanineHash}
+                  >
+                    <div>
+                      { ingestStore.jobs[jobId].finalize.mezzanineHash }
+                    </div>
+                  </Copyable>
+                </div>
               </div>
-              <div className="job-details__section-flexbox">
-                <span>Mezzanine object id</span>
-                <span>{ ingestStore.jobs[jobId].finalize.objectId }</span>
+              <div className="job-details__card job-details__card--secondary">
+                <div className="job-details__card__text">
+                  <div>ID</div>
+                  <div className="job-details__card__text__description">
+                    <button
+                      type="button"
+                      className="job-details__card__inline-link"
+                      onClick={() => OpenObjectLink({
+                        libraryId: ingestStore.jobs[jobId].formData.mez.libraryId,
+                        objectId: ingestStore.jobs[jobId].finalize.objectId
+                      })} >
+                      <span>{ ingestStore.jobs[jobId].finalize.objectId }</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </>
         }

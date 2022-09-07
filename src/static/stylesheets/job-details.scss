@@ -3,11 +3,6 @@
     margin-bottom: 1rem;
   }
 
-  &__section-flexbox {
-    display: flex;
-    gap: 1rem;
-  }
-
   &__card {
     align-items: center;
     background-color: $gray5;
@@ -15,12 +10,21 @@
     display: flex;
     margin-bottom: 1rem;
     padding: 1.5rem 1rem;
-    width: 500px;
+    width: 600px;
+
+    &--secondary {
+      background-color: unset;
+      border: 1px solid $gray2;
+    }
 
     &__icon {
       height: 20px;
       margin-left: auto;
       width: 20px;
+    }
+
+    &__inline-link {
+      color: $blue;
     }
 
     &__text {
@@ -31,6 +35,11 @@
         font-size: 0.875rem;
         font-weight: 400;
         padding-top: 0.25rem;
+
+        &__icon {
+          height: 20px;
+          width: 20px;
+        }
       }
     }
   }

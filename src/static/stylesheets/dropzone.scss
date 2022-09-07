@@ -1,8 +1,9 @@
 .dropzone {
   display: flex;
   flex-direction: column;
+  height: 180px;
   margin-top: 0.5rem;
-  width: 400px;
+  width: 100%;
 
   &__area {
     align-items: center;
@@ -27,6 +28,7 @@
 
   &__icon {
     color: $gray;
+    fill: $gray6;
     height: 75px;
     width: 125px;
   }

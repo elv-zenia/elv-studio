@@ -240,7 +240,6 @@ const Form = observer(() => {
                 formName="s3Region"
                 value={s3Region}
                 onChange={event => setS3Region(event.target.value)}
-                required={uploadMethod === "s3"}
               />
 
               <Checkbox

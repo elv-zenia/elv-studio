@@ -278,7 +278,6 @@ class IngestStore {
         secret,
         signedUrl,
         copy,
-        callback: value => console.log("UPLOAD from S3", value),
         encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
       });
     } else {
