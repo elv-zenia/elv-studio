@@ -3,6 +3,11 @@
     margin-bottom: 1rem;
   }
 
+  &__section-flexbox {
+    display: flex;
+    gap: 1rem;
+  }
+
   &__card {
     align-items: center;
     background-color: $gray5;

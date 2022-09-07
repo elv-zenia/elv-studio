@@ -186,7 +186,8 @@ class IngestStore {
       options: mezContentType ? { type: mezContentType } : {}
     });
 
-    formData.masterObjectId = response.id;
+    formData.master.writeToken = response.write_token;
+    formData.master.masterObjectId = response.id;
 
     this.UpdateIngestObject({
       id: response.id,
@@ -212,47 +213,10 @@ class IngestStore {
     s3Url,
     access=[],
     copy,
+    masterObjectId,
+    writeToken
   }) {
     ValidateLibrary(libraryId);
-
-    // // Add ABR metadata to library if form changes were made
-    if(abr) {
-      const libraryObjectId = libraryId.replace("ilib", "iq__");
-      abr = ParseInputJson(abr);
-
-      yield this.client.EditAndFinalizeContentObject({
-        libraryId,
-        objectId: libraryObjectId,
-        commitMessage: "Updated abr profile",
-        callback: async ({writeToken}) => {
-          await this.client.ReplaceMetadata({
-            libraryId,
-            objectId: libraryObjectId,
-            writeToken,
-            metadataSubtree: "abr",
-            metadata: abr
-          });
-        }
-      });
-    }
-
-    const {qid} = yield this.client.ContentLibrary({libraryId});
-    const abrResponse = yield this.client.ContentObjectMetadata({
-      libraryId: yield this.client.ContentObjectLibraryId({objectId: qid}),
-      objectId: qid,
-      metadataSubtree: "/abr"
-    });
-    abr = abrResponse;
-
-    if(!abr) { throw Error(`Library ${libraryId} is not set up for ingest.`); }
-
-    let response = yield this.client.CreateContentObject({
-      libraryId,
-      options: abr.mez_content_type ? { type: abr.mez_content_type } : {}
-    });
-
-    const masterObjectId = response.id;
-    const writeToken = response.write_token;
 
     this.UpdateIngestObject({
       id: masterObjectId,

@@ -4,7 +4,7 @@ import {useDropzone} from "react-dropzone";
 import ImageIcon from "Components/common/ImageIcon";
 import PictureIcon from "Assets/icons/image.svg";
 
-const Dropzone = ({accept, id, onDrop, disabled, hide}) => {
+const Dropzone = ({accept, id, onDrop, disabled}) => {
   const {
     getRootProps,
     getInputProps,
@@ -14,8 +14,6 @@ const Dropzone = ({accept, id, onDrop, disabled, hide}) => {
     onDrop,
     disabled
   });
-
-  if(hide) { return null; }
 
   return (
     <section className={`dropzone${disabled ? " dropzone--disabled" : ""}`} id={id}>

@@ -5,8 +5,10 @@ import {ingestStore} from "Stores";
 import Dropzone from "Components/common/Dropzone";
 import LibraryWrapper from "Components/LibraryWrapper";
 import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components/common/Inputs";
+import {Redirect} from "react-router-dom";
 
 const Form = observer(() => {
+  const [masterObjectId, setMasterObjectId] = useState();
   const [uploadMethod, setUploadMethod] = useState("local");
   const [files, setFiles] = useState([]);
   const [masterAbr, setMasterAbr] = useState();
@@ -17,7 +19,6 @@ const Form = observer(() => {
   const [masterDescription, setMasterDescription] = useState();
   const [mezName, setMezName] = useState();
   const [mezDescription, setMezDescription] = useState();
-  // const [mezAbr, setMezAbr] = useState();
 
   const [displayName, setDisplayName] = useState();
   const [playbackEncryption, setPlaybackEncryption] = useState();
@@ -43,84 +44,11 @@ const Form = observer(() => {
     setDisableDrm(!hasDrmCert);
   }, [masterLibrary]);
 
-  // useEffect(() => {
-  //   if(!ingestStore.libraries || !ingestStore.GetLibrary(mezLibrary)) { return; }
-  //
-  //   const abr = JSON.stringify(
-  //     ingestStore.GetLibrary(mezLibrary).abr, null, 2
-  //   ) || "";
-  //
-  //   setMezAbr(abr);
-  // }, [mezLibrary]);
-
-  const DropzoneComponent = () => {
-    return Dropzone({
-      accept: {"audio/*": [], "video/*": []},
-      id: "main-dropzone",
-      onDrop: files => setFiles(files),
-      hide: uploadMethod === "s3"
-    });
-  };
-
-  const HandleSubmit = async (event) => {
-    event.preventDefault();
-
-    let access = [];
-    if(uploadMethod === "s3") {
-      const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
-      const s3prefixMatch = (s3prefixRegex.exec(s3Url));
-      const bucket = s3prefixMatch[1];
-
-      const cloudCredentials = s3UseAKSecret ?
-        {
-          access_key_id: s3AccessKey,
-          secret_access_key: s3Secret
-        } :
-        {
-          signed_url: s3PresignedUrl
-        };
-
-      access = [{
-        path_matchers: [".*"],
-        remote_access: {
-          protocol: "s3",
-          platform: "aws",
-          path: bucket + "/",
-          storage_endpoint: {
-            region: s3Region
-          },
-          cloud_credentials: cloudCredentials
-        }
-      }];
-    }
-
-    const response = await ingestStore.CreateProductionMaster({
-      libraryId: masterLibrary,
-      abr: masterAbr,
-      files: uploadMethod === "local" ? files : undefined,
-      title: masterName,
-      description: masterDescription,
-      s3Url: uploadMethod === "s3" ? s3Url : undefined,
-      access,
-      copy: s3Copy
-    });
-
-    console.log("master response", response);
-
-    const mezResponse = await ingestStore.CreateABRMezzanine({
-      libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
-      masterObjectId: response.id,
-      masterVersionHash: response.hash,
-      abrProfile: response.abrProfile,
-      type: response.contentTypeId,
-      name: useMasterAsMez ? masterName : mezName,
-      description: useMasterAsMez ? masterDescription : mezDescription,
-      displayName,
-      newObject: !useMasterAsMez,
-      access: response.access
-    });
-    console.log("mez response", mezResponse);
-  };
+  const dropzone = Dropzone({
+    accept: {"audio/*": [], "video/*": []},
+    id: "main-dropzone",
+    onDrop: files => setFiles(files)
+  });
 
   const LibraryAbrInput = ({
     onChange,
@@ -165,14 +93,6 @@ const Form = observer(() => {
         onChange={event => setMezLibrary(event.target.value)}
       />
 
-      {/*{*/}
-      {/*  LibraryAbrInput({*/}
-      {/*    onChange: event => setMezAbr(event.target.value),*/}
-      {/*    library: mezLibrary,*/}
-      {/*    value: mezAbr*/}
-      {/*  })*/}
-      {/*}*/}
-
       <Input
         label="Name"
         required={true}
@@ -194,6 +114,71 @@ const Form = observer(() => {
       />
     </>
   );
+
+  const HandleSubmit = async (event) => {
+    event.preventDefault();
+
+    let access = [];
+    if(uploadMethod === "s3") {
+      const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+      const s3prefixMatch = (s3prefixRegex.exec(s3Url));
+      const bucket = s3prefixMatch[1];
+
+      const cloudCredentials = s3UseAKSecret ?
+        {
+          access_key_id: s3AccessKey,
+          secret_access_key: s3Secret
+        } :
+        {
+          signed_url: s3PresignedUrl
+        };
+
+      access = [{
+        path_matchers: [".*"],
+        remote_access: {
+          protocol: "s3",
+          platform: "aws",
+          path: bucket + "/",
+          storage_endpoint: {
+            region: s3Region
+          },
+          cloud_credentials: cloudCredentials
+        }
+      }];
+    }
+
+    const abrData = await ingestStore.LibraryAbrData({
+      libraryId: masterLibrary,
+      masterAbr
+    });
+
+    const createResponse = await ingestStore.CreateContentObject({
+      libraryId: masterLibrary,
+      mezContentType: abrData.mez_content_type,
+      formData: {
+        master: {
+          libraryId: masterLibrary,
+          abr: abrData,
+          files: uploadMethod === "local" ? files : undefined,
+          title: masterName,
+          description: masterDescription,
+          s3Url: uploadMethod === "s3" ? s3Url : undefined,
+          access,
+          copy: s3Copy
+        },
+        mez: {
+          libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
+          name: useMasterAsMez ? masterName : mezName,
+          description: useMasterAsMez ? masterDescription : mezDescription,
+          displayName,
+          newObject: !useMasterAsMez
+        }
+      }
+    });
+    setMasterObjectId(createResponse.id);
+  };
+
+  if(masterObjectId) { return <Redirect to={`jobs/${masterObjectId}`} />; }
 
   return (
     <LibraryWrapper>
@@ -221,10 +206,10 @@ const Form = observer(() => {
             ]}
           />
 
-          { DropzoneComponent() }
           {
             uploadMethod === "local" &&
               <>
+                { dropzone }
                 <label>{ files.length === 1 ? "File:" : "Files:" }</label>
                 <div className="file-names">
                   {
