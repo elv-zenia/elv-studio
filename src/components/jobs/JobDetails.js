@@ -53,7 +53,6 @@ const JobDetails = observer(() => {
   };
 
   if(!ingestStore.job) { return <PageLoader />; }
-  console.log("Job", toJS(ingestStore.job));
 
   return (
     <div className="page-container">

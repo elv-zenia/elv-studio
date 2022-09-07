@@ -1,4 +1,4 @@
-import {flow, makeAutoObservable, toJS} from "mobx";
+import {flow, makeAutoObservable} from "mobx";
 import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
 import {FileInfo} from "../utils/Files";
@@ -64,7 +64,6 @@ class IngestStore {
     );
 
     this.UpdateIngestJobs({jobs: this.jobs});
-    console.log("jobs", toJS(this.jobs));
   }
 
   UpdateIngestErrors = (type, message) => {
