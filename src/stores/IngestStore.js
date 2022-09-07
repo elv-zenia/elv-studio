@@ -62,6 +62,8 @@ class IngestStore {
       "elv-jobs",
       btoa(JSON.stringify(this.jobs))
     );
+
+    this.UpdateIngestJobs({jobs: this.jobs});
     console.log("jobs", toJS(this.jobs));
   }
 
@@ -146,6 +148,8 @@ class IngestStore {
   });
 
   LibraryAbrData = flow(function * ({libraryId, abr}) {
+    ValidateLibrary(libraryId);
+
     if(abr) {
       const libraryObjectId = libraryId.replace("ilib", "iq__");
       abr = ParseInputJson(abr);
@@ -207,7 +211,6 @@ class IngestStore {
     description,
     s3Url,
     access=[],
-    signedUrl,
     copy,
   }) {
     ValidateLibrary(libraryId);
@@ -296,6 +299,7 @@ class IngestStore {
       const path = s3Url.replace(s3prefixRegex, "");
       const accessKey = s3Reference.remote_access.cloud_credentials.access_key_id;
       const secret = s3Reference.remote_access.cloud_credentials.secret_access_key;
+      const signedUrl = s3Reference.remote_access.cloud_credentials.signed_url;
 
       yield this.client.UploadFilesFromS3({
         libraryId,

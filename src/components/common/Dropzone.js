@@ -23,6 +23,7 @@ const Dropzone = ({accept, id, onDrop, disabled, hide}) => {
         className: `dropzone__area${isDragActive ? " dropzone__area--active" : ""}`
       })}>
         <ImageIcon
+          label="Drag and drop area"
           className="dropzone__icon"
           icon={PictureIcon}
         />

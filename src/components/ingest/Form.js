@@ -186,7 +186,7 @@ const Form = observer(() => {
         onChange={event => setDisplayName(event.target.value)}
         value={displayName}
       />
-      <TextArea
+      <Input
         label="Description"
         formName="mezDescription"
         onChange={event => setMezDescription(event.target.value)}
@@ -266,7 +266,7 @@ const Form = observer(() => {
               {
                 !s3UseAKSecret &&
                 <TextArea
-                  label="Pre-signed URL"
+                  label="Presigned URL"
                   value={s3PresignedUrl}
                   onChange={event => setS3PresignedUrl(event.target.value)}
                 />
@@ -340,7 +340,7 @@ const Form = observer(() => {
             onChange={event => setMasterName(event.target.value)}
             value={masterName}
           />
-          <TextArea
+          <Input
             label="Description"
             formName="masterDescription"
             onChange={event => setMasterDescription(event.target.value)}
