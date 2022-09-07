@@ -8,6 +8,7 @@ import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components
 import {Redirect} from "react-router-dom";
 
 const Form = observer(() => {
+  const [isCreating, setIsCreating] = useState(false);
   const [masterObjectId, setMasterObjectId] = useState();
   const [uploadMethod, setUploadMethod] = useState("local");
   const [files, setFiles] = useState([]);
@@ -117,6 +118,7 @@ const Form = observer(() => {
 
   const HandleSubmit = async (event) => {
     event.preventDefault();
+    setIsCreating(true);
 
     let access = [];
     if(uploadMethod === "s3") {
@@ -363,7 +365,8 @@ const Form = observer(() => {
             <input
               className="form__actions"
               type="submit"
-              value="Create"
+              value={isCreating ? "Submitting..." : "Create"}
+              disabled={isCreating}
             />
           </div>
         </form>
