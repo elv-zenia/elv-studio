@@ -1,7 +1,6 @@
 import React, {useEffect} from "react";
 import {useRouteMatch} from "react-router-dom";
 import {observer} from "mobx-react";
-import {toJS} from "mobx";
 
 import {ingestStore} from "Stores";
 import ImageIcon from "Components/common/ImageIcon";
@@ -34,7 +33,7 @@ const JobDetails = observer(() => {
   const HandleIngest = async () => {
     if(ingestStore.job.currentStep !== "create" || !ingestStore.job.create.complete) { return; }
 
-    const {access, copy, files, libraryId, title, description, s3Url, writeToken, playbackEncryption} = ingestStore.job.formData.master;
+    const {abr, access, copy, files, libraryId, title, description, s3Url, writeToken, playbackEncryption} = ingestStore.job.formData.master;
     const mezFormData = ingestStore.job.formData.mez;
 
     const response = await ingestStore.CreateProductionMaster({
@@ -43,11 +42,20 @@ const JobDetails = observer(() => {
       title,
       description,
       s3Url,
-      access: toJS(access),
+      abr: JSON.parse(abr),
+      access: JSON.parse(access),
       copy,
       masterObjectId: jobId,
       writeToken,
       playbackEncryption
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    await ingestStore.WaitForPublish({
+      hash: response.hash,
+      objectId: jobId,
+      libraryId: libraryId
     });
 
     await ingestStore.CreateABRMezzanine({
@@ -60,7 +68,7 @@ const JobDetails = observer(() => {
       description: mezFormData.description,
       displayName: mezFormData.displayName,
       newObject: mezFormData.newObject,
-      access: JSON.parse(JSON.stringify(response.access))
+      access: JSON.parse(access)
     });
   };
 

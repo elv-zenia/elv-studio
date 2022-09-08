@@ -149,23 +149,19 @@ const Form = observer(() => {
       }];
     }
 
-    const abrData = await ingestStore.UpdateLibraryAbrData({
-      libraryId: masterLibrary,
-      abr: masterAbr
-    });
-
     const createResponse = await ingestStore.CreateContentObject({
       libraryId: masterLibrary,
-      mezContentType: abrData.mez_content_type,
+      mezContentType: JSON.parse(masterAbr).mez_content_type,
       formData: {
         master: {
+          abr: masterAbr,
           libraryId: masterLibrary,
           files: uploadMethod === "local" ? files : undefined,
           title: masterName,
           description: masterDescription,
           s3Url: uploadMethod === "s3" ? s3Url : undefined,
           playbackEncryption,
-          access,
+          access: JSON.stringify(access, null, 2) || "",
           copy: s3Copy
         },
         mez: {

@@ -2,7 +2,6 @@ import {flow, makeAutoObservable} from "mobx";
 import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
 import {FileInfo} from "../utils/Files";
-import {ParseInputJson} from "../utils/Input";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
 const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
@@ -81,7 +80,7 @@ class IngestStore {
       if(latestObjectHash === hash) {
         publishFinished = true;
       } else {
-        yield new Promise(resolve => setTimeout(resolve, 15000));
+        yield new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
   });
@@ -136,6 +135,7 @@ class IngestStore {
           })
         );
       }
+      console.log("lib", this.libraries);
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Failed to load libraries");
@@ -144,39 +144,6 @@ class IngestStore {
     } finally {
       this.loaded = true;
     }
-  });
-
-  UpdateLibraryAbrData = flow(function * ({libraryId, abr}) {
-    ValidateLibrary(libraryId);
-
-    if(abr) {
-      const libraryObjectId = libraryId.replace("ilib", "iq__");
-      abr = ParseInputJson(abr);
-
-      yield this.client.EditAndFinalizeContentObject({
-        libraryId,
-        objectId: libraryObjectId,
-        commitMessage: "Updated abr profile",
-        callback: async ({writeToken}) => {
-          await this.client.ReplaceMetadata({
-            libraryId,
-            objectId: libraryObjectId,
-            writeToken,
-            metadataSubtree: "abr",
-            metadata: abr
-          });
-        }
-      });
-    }
-
-    const {qid} = yield this.client.ContentLibrary({libraryId});
-    const abrResponse = yield this.client.ContentObjectMetadata({
-      libraryId: yield this.client.ContentObjectLibraryId({objectId: qid}),
-      objectId: qid,
-      metadataSubtree: "/abr"
-    });
-
-    return abrResponse;
   });
 
   CreateContentObject = flow(function * ({libraryId, mezContentType, formData}) {
@@ -206,6 +173,7 @@ class IngestStore {
     libraryId,
     files,
     title,
+    abr,
     playbackEncryption="both",
     description,
     s3Url,
@@ -222,13 +190,6 @@ class IngestStore {
         ...this.jobs[masterObjectId],
         currentStep: "upload",
       }
-    });
-
-    const {qid} = yield this.client.ContentLibrary({libraryId});
-    const abr = yield this.client.ContentObjectMetadata({
-      libraryId: yield this.client.ContentObjectLibraryId({objectId: qid}),
-      objectId: qid,
-      metadataSubtree: "/abr"
     });
 
     // Create encryption conk
