@@ -32,9 +32,7 @@ class RootStore {
 
       this.networkInfo = yield this.client.NetworkInfo();
     } catch(error) {
-      // eslint-disable-next-line no-console
       console.error("Failed to initialize application");
-      // eslint-disable-next-line no-console
       console.error(error);
     } finally {
       this.loaded = true;

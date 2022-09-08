@@ -135,11 +135,8 @@ class IngestStore {
           })
         );
       }
-      console.log("lib", this.libraries);
     } catch(error) {
-      // eslint-disable-next-line no-console
       console.error("Failed to load libraries");
-      // eslint-disable-next-line no-console
       console.error(error);
     } finally {
       this.loaded = true;
@@ -147,26 +144,31 @@ class IngestStore {
   });
 
   CreateContentObject = flow(function * ({libraryId, mezContentType, formData}) {
-    const response = yield this.client.CreateContentObject({
-      libraryId,
-      options: mezContentType ? { type: mezContentType } : {}
-    });
+    try {
+      const response = yield this.client.CreateContentObject({
+        libraryId,
+        options: mezContentType ? { type: mezContentType } : {}
+      });
 
-    formData.master.writeToken = response.write_token;
-    formData.master.masterObjectId = response.id;
+      formData.master.writeToken = response.write_token;
+      formData.master.masterObjectId = response.id;
 
-    this.UpdateIngestObject({
-      id: response.id,
-      data: {
-        currentStep: "create",
-        formData,
-        create: {
-          complete: true
+      this.UpdateIngestObject({
+        id: response.id,
+        data: {
+          currentStep: "create",
+          formData,
+          create: {
+            complete: true
+          }
         }
-      }
-    });
+      });
 
-    return response;
+      return response;
+    } catch(error) {
+      console.error("Failed to create content object");
+      console.error(error);
+    }
   });
 
   CreateProductionMaster = flow(function * ({
@@ -200,64 +202,76 @@ class IngestStore {
       createKMSConk: true
     });
 
-    const UploadCallback = (progress) => {
-      let uploadSum = 0;
-      let totalSum = 0;
-      Object.values(progress).forEach(fileProgress => {
-        uploadSum += fileProgress.uploaded;
-        totalSum += fileProgress.total;
-      });
+    try {
+      const UploadCallback = (progress) => {
+        let uploadSum = 0;
+        let totalSum = 0;
+        Object.values(progress).forEach(fileProgress => {
+          uploadSum += fileProgress.uploaded;
+          totalSum += fileProgress.total;
+        });
 
+        this.UpdateIngestObject({
+          id: masterObjectId,
+          data: {
+            ...this.jobs[masterObjectId],
+            upload: {
+              percentage: Math.round((uploadSum / totalSum) * 100)
+            }
+          }
+        });
+      };
+
+      // Upload files
+      if(s3Url && access.length > 0) {
+        const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+        const s3Reference = access[0];
+
+        const region = s3Reference.remote_access.storage_endpoint.region;
+        const bucket = s3Reference.remote_access.path.replace(/\/$/, "");
+        const path = s3Url.replace(s3prefixRegex, "");
+        const accessKey = s3Reference.remote_access.cloud_credentials.access_key_id;
+        const secret = s3Reference.remote_access.cloud_credentials.secret_access_key;
+        const signedUrl = s3Reference.remote_access.cloud_credentials.signed_url;
+
+        yield this.client.UploadFilesFromS3({
+          libraryId,
+          objectId: masterObjectId,
+          writeToken,
+          fileInfo: [{
+            path,
+            source: s3Url
+          }],
+          region,
+          bucket,
+          accessKey,
+          secret,
+          signedUrl,
+          copy,
+          encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
+        });
+      } else {
+        const fileInfo = yield FileInfo("", files);
+
+        yield this.client.UploadFiles({
+          libraryId,
+          objectId: masterObjectId,
+          writeToken,
+          fileInfo,
+          callback: UploadCallback,
+          encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
+        });
+      }
+    } catch(error) {
       this.UpdateIngestObject({
         id: masterObjectId,
         data: {
           ...this.jobs[masterObjectId],
-          upload: {
-            percentage: Math.round((uploadSum / totalSum) * 100)
-          }
+          currentStep: "failed"
         }
       });
-    };
-
-    // Upload files
-    if(s3Url && access.length > 0) {
-      const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
-      const s3Reference = access[0];
-
-      const region = s3Reference.remote_access.storage_endpoint.region;
-      const bucket = s3Reference.remote_access.path.replace(/\/$/, "");
-      const path = s3Url.replace(s3prefixRegex, "");
-      const accessKey = s3Reference.remote_access.cloud_credentials.access_key_id;
-      const secret = s3Reference.remote_access.cloud_credentials.secret_access_key;
-      const signedUrl = s3Reference.remote_access.cloud_credentials.signed_url;
-
-      yield this.client.UploadFilesFromS3({
-        libraryId,
-        objectId: masterObjectId,
-        writeToken,
-        fileInfo: [{
-          path,
-          source: s3Url
-        }],
-        region,
-        bucket,
-        accessKey,
-        secret,
-        signedUrl,
-        copy,
-        encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
-      });
-    } else {
-      const fileInfo = yield FileInfo("", files);
-
-      yield this.client.UploadFiles({
-        libraryId,
-        objectId: masterObjectId,
-        writeToken,
-        fileInfo,
-        callback: UploadCallback,
-        encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
-      });
+      console.error("Failed to upload files for object: ", masterObjectId);
+      console.error(error);
     }
 
     this.UpdateIngestObject({
@@ -285,8 +299,14 @@ class IngestStore {
     });
 
     if(errors) {
-      /* eslint-disable no-console */
-      console.error(errors);
+      this.UpdateIngestObject({
+        id: masterObjectId,
+        data: {
+          ...this.jobs[masterObjectId],
+          currentStep: "failed"
+        }
+      });
+      console.error("Failed to call media/production_master/init");
       this.UpdateIngestErrors("errors", "Error: Unable to ingest selected media file.");
     }
 
@@ -374,6 +394,7 @@ class IngestStore {
       if(abrProfileExclude.ok) {
         abrProfile = abrProfileExclude.result;
       } else {
+        console.error("ABR Profile has no relevant playout formats.", abrProfileExclude);
         this.UpdateIngestErrors("errors", "Error: ABR Profile has no relevant playout formats.");
       }
     }
@@ -404,8 +425,9 @@ class IngestStore {
     offeringKey="default",
     access=[]
   }) {
+    let createResponse;
     try {
-      const createResponse = yield this.client.CreateABRMezzanine({
+      createResponse = yield this.client.CreateABRMezzanine({
         libraryId,
         objectId: newObject ? undefined : masterObjectId,
         type,
@@ -415,136 +437,134 @@ class IngestStore {
         variant,
         offeringKey
       });
-      const objectId = createResponse.id;
+    } catch(error) {
+      console.error(`Failed to create mezzanine object: ${masterObjectId}`);
+      console.error(error);
+    }
+    const objectId = createResponse.id;
 
-      yield this.WaitForPublish({
-        hash: createResponse.hash,
+    yield this.WaitForPublish({
+      hash: createResponse.hash,
+      libraryId,
+      objectId
+    });
+
+    const { writeToken, hash } = yield this.client.StartABRMezzanineJobs({
+      libraryId,
+      objectId,
+      access
+    });
+
+    yield this.WaitForPublish({
+      hash,
+      libraryId,
+      objectId
+    });
+
+    let done;
+    let error;
+    let statusIntervalId;
+    while(!done && !error) {
+      let status = yield this.client.LROStatus({
         libraryId,
         objectId
       });
 
-      const { writeToken, hash } = yield this.client.StartABRMezzanineJobs({
-        libraryId,
-        objectId,
-        access
-      });
+      if(status === undefined) {
+        console.error("Received no job status information from server.");
+        return;
+      }
 
-      yield this.WaitForPublish({
-        hash,
-        libraryId,
-        objectId
-      });
+      if(statusIntervalId) clearInterval(statusIntervalId);
+      statusIntervalId = setInterval( async () => {
+        const options = Object.assign(
+          defaultOptions(),
+          {currentTime: new Date()}
+        );
+        const enhancedStatus = enhanceLROStatus(options, status);
 
-      let done;
-      let error;
-      let statusIntervalId;
-      while(!done && !error) {
-        let status = yield this.client.LROStatus({
-          libraryId,
-          objectId
-        });
-
-        if(status === undefined) {
-          /* eslint-disable no-console */
-          console.error("Received no job status information from server - object already finalized?");
+        if(!enhancedStatus.ok) {
+          console.error("Error processing LRO status");
+          this.UpdateIngestErrors("errors", "Error: Unable to transcode selected file.");
+          clearInterval(statusIntervalId);
+          error = true;
           return;
         }
 
-        if(statusIntervalId) clearInterval(statusIntervalId);
-        statusIntervalId = setInterval( async () => {
-          const options = Object.assign(
-            defaultOptions(),
-            {currentTime: new Date()}
-          );
-          const enhancedStatus = enhanceLROStatus(options, status);
+        const {estimated_time_left_seconds, estimated_time_left_h_m_s, run_state} = enhancedStatus.result.summary;
 
-          if(!enhancedStatus.ok) {
-            /* eslint-disable no-console */
-            console.error("Error processing LRO status");
-            this.UpdateIngestErrors("errors", "Error: Unable to transcode selected file.");
-            clearInterval(statusIntervalId);
-            error = true;
-            return;
+        this.UpdateIngestObject({
+          id: masterObjectId,
+          data: {
+            ...this.jobs[masterObjectId],
+            mezObjectId: objectId,
+            ingest: {
+              runState: run_state,
+              estimatedTimeLeft:
+              (!estimated_time_left_seconds && run_state === "running") ? "Calculating..." : estimated_time_left_h_m_s ? `${estimated_time_left_h_m_s} remaining` : ""
+            },
+            formData: {
+              ...this.jobs[masterObjectId].formData,
+              mez: {
+                libraryId,
+                masterObjectId,
+                abrProfile,
+                name,
+                description,
+                displayName,
+                masterVersionHash,
+                type,
+                newObject,
+                variant,
+                offeringKey,
+                access
+              }
+            }
           }
+        });
 
-          const {estimated_time_left_seconds, estimated_time_left_h_m_s, run_state} = enhancedStatus.result.summary;
+        if(run_state !== "running") {
+          clearInterval(statusIntervalId);
+          done = true;
 
-          this.UpdateIngestObject({
-            id: masterObjectId,
-            data: {
-              ...this.jobs[masterObjectId],
-              mezObjectId: objectId,
-              ingest: {
-                runState: run_state,
-                estimatedTimeLeft:
-                (!estimated_time_left_seconds && run_state === "running") ? "Calculating..." : estimated_time_left_h_m_s ? `${estimated_time_left_h_m_s} remaining` : ""
-              },
-              formData: {
-                ...this.jobs[masterObjectId].formData,
-                mez: {
-                  libraryId,
-                  masterObjectId,
-                  abrProfile,
-                  name,
-                  description,
-                  displayName,
-                  masterVersionHash,
-                  type,
-                  newObject,
-                  variant,
-                  offeringKey,
-                  access
+          const embedUrl = this.GenerateEmbedUrl({
+            objectId: masterObjectId
+          });
+
+          await this.client.MergeMetadata({
+            libraryId,
+            objectId,
+            writeToken,
+            metadata: {
+              public: {
+                name: `${name} MEZ`,
+                description,
+                asset_metadata: {
+                  display_title: `${name} MEZ`,
+                  nft: {
+                    name,
+                    display_name: displayName,
+                    description,
+                    created_at: new Date(),
+                    playable: true,
+                    has_audio: this.jobs[masterObjectId].upload.streams.includes("audio"),
+                    embed_url: embedUrl,
+                    external_url: embedUrl
+                  }
                 }
               }
             }
           });
 
-          if(run_state !== "running") {
-            clearInterval(statusIntervalId);
-            done = true;
+          this.FinalizeABRMezzanine({
+            libraryId,
+            objectId,
+            masterObjectId
+          });
+        }
+      }, 1000);
 
-            const embedUrl = this.GenerateEmbedUrl({
-              objectId: masterObjectId
-            });
-
-            await this.client.MergeMetadata({
-              libraryId,
-              objectId,
-              writeToken,
-              metadata: {
-                public: {
-                  name: `${name} MEZ`,
-                  description,
-                  asset_metadata: {
-                    display_title: `${name} MEZ`,
-                    nft: {
-                      name,
-                      display_name: displayName,
-                      description,
-                      created_at: new Date(),
-                      playable: true,
-                      has_audio: this.jobs[masterObjectId].upload.streams.includes("audio"),
-                      embed_url: embedUrl,
-                      external_url: embedUrl
-                    }
-                  }
-                }
-              }
-            });
-
-            this.FinalizeABRMezzanine({
-              libraryId,
-              objectId,
-              masterObjectId
-            });
-          }
-        }, 1000);
-
-        yield new Promise(resolve => setTimeout(resolve, 15000));
-      }
-    } catch(error) {
-      console.error(`Failed to create mezzanine object: ${masterObjectId}`);
-      console.error(error);
+      yield new Promise(resolve => setTimeout(resolve, 15000));
     }
   });
 
@@ -566,7 +586,7 @@ class IngestStore {
       });
 
       if(!production_master || !production_master.sources || !production_master.variants || !production_master.variants.default) {
-        console.error("Error: Unable to create ABR profile.");
+        console.error("Unable to create ABR profile.");
         this.UpdateIngestErrors("errors", "Error: Unable to create ABR profile.");
         return;
       }
@@ -578,6 +598,7 @@ class IngestStore {
       );
 
       if(!generatedProfile.ok) {
+        console.error("Generated profile returned error.", generatedProfile);
         this.UpdateIngestErrors("errors", "Error: Unable to create ABR profile.");
         return;
       }
@@ -587,7 +608,6 @@ class IngestStore {
         contentTypeId: abr.mez_content_type
       };
     } catch(error) {
-      /* eslint-disable no-console */
       console.error(`Failed to create ABR ladder for object: ${objectId}`);
       console.error(error);
       this.UpdateIngestErrors("errors", "Error: Unable to create ABR profile.");
@@ -621,7 +641,7 @@ class IngestStore {
         }
       });
     } catch(error) {
-      /* eslint-disable no-console */
+      console.error("Unable to finalize mezzanine object");
       console.error(error);
       this.UpdateIngestErrors("errors", "Error: Unable to transcode selected file.");
     }
