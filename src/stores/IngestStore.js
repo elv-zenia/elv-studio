@@ -80,7 +80,7 @@ class IngestStore {
       if(latestObjectHash === hash) {
         publishFinished = true;
       } else {
-        yield new Promise(resolve => setTimeout(resolve, 3000));
+        yield new Promise(resolve => setTimeout(resolve, 15000));
       }
     }
   });
