@@ -121,59 +121,65 @@ const Form = observer(() => {
     setIsCreating(true);
 
     let access = [];
-    if(uploadMethod === "s3") {
-      const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
-      const s3prefixMatch = (s3prefixRegex.exec(s3Url));
-      const bucket = s3prefixMatch[1];
+    try {
+      if(uploadMethod === "s3") {
+        const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+        const s3prefixMatch = (s3prefixRegex.exec(s3Url));
 
-      const cloudCredentials = s3UseAKSecret ?
-        {
-          access_key_id: s3AccessKey,
-          secret_access_key: s3Secret
-        } :
-        {
-          signed_url: s3PresignedUrl
-        };
+        const bucket = s3prefixMatch[1];
 
-      access = [{
-        path_matchers: [".*"],
-        remote_access: {
-          protocol: "s3",
-          platform: "aws",
-          path: bucket + "/",
-          storage_endpoint: {
-            region: s3Region
-          },
-          cloud_credentials: cloudCredentials
-        }
-      }];
-    }
+        const cloudCredentials = s3UseAKSecret ?
+          {
+            access_key_id: s3AccessKey,
+            secret_access_key: s3Secret
+          } :
+          {
+            signed_url: s3PresignedUrl
+          };
 
-    const createResponse = await ingestStore.CreateContentObject({
-      libraryId: masterLibrary,
-      mezContentType: JSON.parse(masterAbr).mez_content_type,
-      formData: {
-        master: {
-          abr: masterAbr,
-          libraryId: masterLibrary,
-          files: uploadMethod === "local" ? files : undefined,
-          title: masterName,
-          description: masterDescription,
-          s3Url: uploadMethod === "s3" ? s3Url : undefined,
-          playbackEncryption,
-          access: JSON.stringify(access, null, 2) || "",
-          copy: s3Copy
-        },
-        mez: {
-          libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
-          name: useMasterAsMez ? masterName : mezName,
-          description: useMasterAsMez ? masterDescription : mezDescription,
-          displayName,
-          newObject: !useMasterAsMez
-        }
+        access = [{
+          path_matchers: [".*"],
+          remote_access: {
+            protocol: "s3",
+            platform: "aws",
+            path: bucket + "/",
+            storage_endpoint: {
+              region: s3Region
+            },
+            cloud_credentials: cloudCredentials
+          }
+        }];
       }
-    });
-    setMasterObjectId(createResponse.id);
+
+      const createResponse = await ingestStore.CreateContentObject({
+        libraryId: masterLibrary,
+        mezContentType: JSON.parse(masterAbr).mez_content_type,
+        formData: {
+          master: {
+            abr: masterAbr,
+            libraryId: masterLibrary,
+            files: uploadMethod === "local" ? files : undefined,
+            title: masterName,
+            description: masterDescription,
+            s3Url: uploadMethod === "s3" ? s3Url : undefined,
+            playbackEncryption,
+            access: JSON.stringify(access, null, 2) || "",
+            copy: s3Copy
+          },
+          mez: {
+            libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
+            name: useMasterAsMez ? masterName : mezName,
+            description: useMasterAsMez ? masterDescription : mezDescription,
+            displayName,
+            newObject: !useMasterAsMez
+          }
+        }
+      });
+
+      setMasterObjectId(createResponse.id);
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   if(masterObjectId) { return <Redirect to={`jobs/${masterObjectId}`} />; }
@@ -251,6 +257,7 @@ const Form = observer(() => {
                   label="Presigned URL"
                   value={s3PresignedUrl}
                   onChange={event => setS3PresignedUrl(event.target.value)}
+                  required={uploadMethod === "s3" && !s3UseAKSecret}
                 />
               }
               {
