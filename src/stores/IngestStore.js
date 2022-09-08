@@ -146,7 +146,7 @@ class IngestStore {
     }
   });
 
-  LibraryAbrData = flow(function * ({libraryId, abr}) {
+  UpdateLibraryAbrData = flow(function * ({libraryId, abr}) {
     ValidateLibrary(libraryId);
 
     if(abr) {
@@ -204,7 +204,6 @@ class IngestStore {
 
   CreateProductionMaster = flow(function * ({
     libraryId,
-    abr,
     files,
     title,
     playbackEncryption="both",
@@ -223,6 +222,13 @@ class IngestStore {
         ...this.jobs[masterObjectId],
         currentStep: "upload",
       }
+    });
+
+    const {qid} = yield this.client.ContentLibrary({libraryId});
+    const abr = yield this.client.ContentObjectMetadata({
+      libraryId: yield this.client.ContentObjectLibraryId({objectId: qid}),
+      objectId: qid,
+      metadataSubtree: "/abr"
     });
 
     // Create encryption conk

@@ -149,9 +149,9 @@ const Form = observer(() => {
       }];
     }
 
-    const abrData = await ingestStore.LibraryAbrData({
+    const abrData = await ingestStore.UpdateLibraryAbrData({
       libraryId: masterLibrary,
-      masterAbr
+      abr: masterAbr
     });
 
     const createResponse = await ingestStore.CreateContentObject({
@@ -160,11 +160,11 @@ const Form = observer(() => {
       formData: {
         master: {
           libraryId: masterLibrary,
-          abr: abrData,
           files: uploadMethod === "local" ? files : undefined,
           title: masterName,
           description: masterDescription,
           s3Url: uploadMethod === "s3" ? s3Url : undefined,
+          playbackEncryption,
           access,
           copy: s3Copy
         },

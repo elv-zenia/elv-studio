@@ -34,12 +34,11 @@ const JobDetails = observer(() => {
   const HandleIngest = async () => {
     if(ingestStore.job.currentStep !== "create" || !ingestStore.job.create.complete) { return; }
 
-    const {abr, access, copy, files, libraryId, title, description, s3Url, writeToken} = ingestStore.job.formData.master;
+    const {access, copy, files, libraryId, title, description, s3Url, writeToken, playbackEncryption} = ingestStore.job.formData.master;
     const mezFormData = ingestStore.job.formData.mez;
 
     const response = await ingestStore.CreateProductionMaster({
       libraryId,
-      abr,
       files,
       title,
       description,
@@ -47,14 +46,15 @@ const JobDetails = observer(() => {
       access: toJS(access),
       copy,
       masterObjectId: jobId,
-      writeToken
+      writeToken,
+      playbackEncryption
     });
 
     await ingestStore.CreateABRMezzanine({
       libraryId: mezFormData.libraryId,
       masterObjectId: response.id,
       masterVersionHash: response.hash,
-      abrProfile: JSON.parse(JSON.stringify(response.abrProfile)),
+      abrProfile: response.abrProfile,
       type: response.contentTypeId,
       name: mezFormData.name,
       description: mezFormData.description,
