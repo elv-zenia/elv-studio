@@ -69,6 +69,11 @@ class IngestStore {
     this.ingestErrors[type].push(message);
   }
 
+  ClearJobs = () => {
+    this.jobs = {};
+    localStorage.removeItem("elv-jobs");
+  }
+
   WaitForPublish = flow (function * ({hash, objectId}) {
     let publishFinished = false;
     let latestObjectHash;

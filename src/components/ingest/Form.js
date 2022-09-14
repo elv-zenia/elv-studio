@@ -6,6 +6,7 @@ import Dropzone from "Components/common/Dropzone";
 import LibraryWrapper from "Components/LibraryWrapper";
 import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components/common/Inputs";
 import {Redirect} from "react-router-dom";
+import {s3Regions} from "Utils";
 
 const Form = observer(() => {
   const [isCreating, setIsCreating] = useState(false);
@@ -201,7 +202,7 @@ const Form = observer(() => {
                 onChange: event => setUploadMethod(event.target.value)
               },
               {
-                optionLabel: "S3 URI",
+                optionLabel: "S3 Bucket",
                 id: "s3",
                 value: "s3",
                 checked: uploadMethod === "s3",
@@ -229,18 +230,26 @@ const Form = observer(() => {
           {
             uploadMethod === "s3" && <>
               <Input
-                label="Or upload from an S3 URL"
+                label="S3 URI"
                 formName="s3Url"
                 value={s3Url}
                 onChange={event => setS3Url(event.target.value)}
-                placeholder="s3://BUCKET_NAME/video.mp4"
+                placeholder="s3://BUCKET_NAME/PATH_TO_MEDIA.mp4"
                 required={uploadMethod === "s3"}
               />
 
-              <Input
+              <Select
                 label="Region"
                 formName="s3Region"
-                value={s3Region}
+                options={
+                  s3Regions.map(({value, name}) => (
+                    {value, label: name}
+                  ))
+                }
+                defaultOption={{
+                  value: "",
+                  label: "Select region"
+                }}
                 onChange={event => setS3Region(event.target.value)}
               />
 

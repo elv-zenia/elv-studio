@@ -1,6 +1,6 @@
 .table {
   display: table;
-  width: 600px;
+  width: 800px;
 
   &__head {
     display: table-header-group;
@@ -8,6 +8,7 @@
     padding: 1rem;
 
     &__row {
+      background-color: $gray2;
       display: table-row;
     }
   }
@@ -35,5 +36,12 @@
   &__column {
     display: table-cell;
     padding: 1rem;
+  }
+}
+
+.jobs {
+  &__button {
+    margin-bottom: 1rem;
+    right: 0;
   }
 }

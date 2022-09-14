@@ -25,13 +25,13 @@
   &__input-description {
     color: $gray3;
     font-size: 0.9rem;
+    margin-bottom: 0.5rem;
   }
 
   input[type="text"],
   input[type="password"],
   textarea,
   select {
-    margin-top: 0.5rem;
     width: 100%;
   }
 
@@ -61,6 +61,7 @@
   &__checkbox-container {
     align-items: center;
     display: flex;
+    margin-bottom: 1rem;
 
     label {
       padding-right: 0.5rem;
@@ -75,5 +76,9 @@
 
   .file-names {
     margin-bottom: 2rem;
+  }
+
+  &__radio-container {
+    margin-bottom: 1rem;
   }
 }

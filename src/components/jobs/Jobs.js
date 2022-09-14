@@ -2,6 +2,7 @@ import React from "react";
 import {observer} from "mobx-react";
 import {ingestStore} from "Stores";
 import Table from "Components/common/Table";
+import Dialog from "Components/common/Dialog";
 
 const Jobs = observer(() => {
   if(!ingestStore.jobs || Object.keys(ingestStore.jobs).length === 0) {
@@ -18,6 +19,19 @@ const Jobs = observer(() => {
     <div className="page-container">
       <div className="page__header">Active Ingest Jobs</div>
       <div className="jobs">
+        <Dialog
+          title="Clear Jobs"
+          description="Are you sure you want to clear all jobs? This action cannot be undone."
+          trigger={(
+            <button
+              className="primary-button jobs__button"
+              type="button"
+            >
+              Clear All Jobs
+            </button>
+          )}
+          ConfirmCallback={ingestStore.ClearJobs}
+        />
         <Table
           headers={[
             {
