@@ -78,14 +78,18 @@ class IngestStore {
     let publishFinished = false;
     let latestObjectHash;
     while(!publishFinished) {
-      latestObjectHash = yield this.client.LatestVersionHash({
-        objectId
-      });
+      try {
+        latestObjectHash = yield this.client.LatestVersionHash({
+          objectId
+        });
 
-      if(latestObjectHash === hash) {
-        publishFinished = true;
-      } else {
-        yield new Promise(resolve => setTimeout(resolve, 15000));
+        if(latestObjectHash === hash) {
+          publishFinished = true;
+        } else {
+          yield new Promise(resolve => setTimeout(resolve, 15000));
+        }
+      } catch(error) {
+        console.error(error, "Retrying");
       }
     }
   });
@@ -401,6 +405,7 @@ class IngestStore {
       } else {
         console.error("ABR Profile has no relevant playout formats.", abrProfileExclude);
         this.UpdateIngestErrors("errors", "Error: ABR Profile has no relevant playout formats.");
+        return;
       }
     }
 
