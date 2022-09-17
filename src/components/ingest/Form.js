@@ -28,6 +28,7 @@ const Form = observer(() => {
   const [playbackEncryption, setPlaybackEncryption] = useState();
   const [useMasterAsMez, setUseMasterAsMez] = useState(true);
   const [disableDrm, setDisableDrm] = useState(false);
+  const [disableClear, setDisableClear] = useState(false);
 
   const [s3Url, setS3Url] = useState();
   const [s3Region, setS3Region] = useState();
@@ -53,6 +54,27 @@ const Form = observer(() => {
     id: "main-dropzone",
     onDrop: files => setFiles(files)
   });
+
+  useEffect(() => {
+    if(!masterAbr) {
+      setDisableDrm(true);
+      setDisableClear(true);
+      return;
+    }
+
+    const parsedProfile = JSON.parse(masterAbr);
+    const playoutFormats = Object.keys(
+      parsedProfile &&
+      parsedProfile.default_profile &&
+      parsedProfile.default_profile.playout_formats || {}
+    );
+
+    const drm = playoutFormats.filter(formatName => !formatName.includes("clear"));
+    const clear = playoutFormats.find(formatName => formatName.includes("clear"));
+
+    setDisableDrm(drm.length === 0);
+    setDisableClear(!clear);
+  }, [masterAbr]);
 
   const LibraryAbrInput = ({
     onChange,
@@ -396,8 +418,8 @@ const Form = observer(() => {
             required={true}
             options={[
               {value: "drm", label: "Digital Rights Management", disabled: disableDrm},
-              {value: "clear", label: "Clear"},
-              {value: "both", label: "Both", disabled: disableDrm},
+              {value: "clear", label: "Clear", disabled: disableClear},
+              {value: "both", label: "Both", disabled: disableDrm || disableClear},
             ]}
             defaultOption={{
               value: "",
