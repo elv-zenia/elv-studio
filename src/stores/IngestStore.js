@@ -78,14 +78,19 @@ class IngestStore {
     let publishFinished = false;
     let latestObjectHash;
     while(!publishFinished) {
-      latestObjectHash = yield this.client.LatestVersionHash({
-        objectId
-      });
+      try {
+        latestObjectHash = yield this.client.LatestVersionHash({
+          objectId
+        });
 
-      if(latestObjectHash === hash) {
-        publishFinished = true;
-      } else {
-        yield new Promise(resolve => setTimeout(resolve, 15000));
+        if(latestObjectHash === hash) {
+          publishFinished = true;
+        } else {
+          yield new Promise(resolve => setTimeout(resolve, 15000));
+        }
+      } catch(error) {
+        console.error(error);
+        console.error(`Waiting for master object publishing hash:${hash}. Retrying.`);
       }
     }
   });
@@ -150,9 +155,15 @@ class IngestStore {
 
   CreateContentObject = flow(function * ({libraryId, mezContentType, formData}) {
     try {
+      const options = {
+        visibility: 0
+      };
+
+      if(mezContentType) { options["type"] = mezContentType; }
+
       const response = yield this.client.CreateContentObject({
         libraryId,
-        options: mezContentType ? { type: mezContentType } : {}
+        options
       });
 
       formData.master.writeToken = response.write_token;
@@ -401,6 +412,7 @@ class IngestStore {
       } else {
         console.error("ABR Profile has no relevant playout formats.", abrProfileExclude);
         this.UpdateIngestErrors("errors", "Error: ABR Profile has no relevant playout formats.");
+        return;
       }
     }
 
