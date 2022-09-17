@@ -89,7 +89,8 @@ class IngestStore {
           yield new Promise(resolve => setTimeout(resolve, 15000));
         }
       } catch(error) {
-        console.error(error, "Retrying");
+        console.error(error);
+        console.error(`Waiting for master object publishing hash:${hash}. Retrying.`);
       }
     }
   });
@@ -154,9 +155,15 @@ class IngestStore {
 
   CreateContentObject = flow(function * ({libraryId, mezContentType, formData}) {
     try {
+      const options = {
+        visibility: 0
+      };
+
+      if(mezContentType) { options["type"] = mezContentType; }
+
       const response = yield this.client.CreateContentObject({
         libraryId,
-        options: mezContentType ? { type: mezContentType } : {}
+        options
       });
 
       formData.master.writeToken = response.write_token;
