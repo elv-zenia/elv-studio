@@ -8,6 +8,7 @@ const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
 
 class IngestStore {
   libraries;
+  accessGroups;
   loaded;
   jobs;
   job;
@@ -148,6 +149,26 @@ class IngestStore {
     }
   });
 
+  LoadAccessGroups = flow(function * () {
+    try {
+      if(!this.accessGroups) {
+        this.accessGroups = {};
+        const accessGroups = yield this.client.ListAccessGroups();
+        accessGroups.map(async accessGroup => {
+          if(accessGroup.meta["name"]){
+            this.accessGroups[accessGroup.meta["name"]] = accessGroup;
+          } else {
+            this.accessGroups[accessGroup.id] = accessGroup;
+          }
+        });
+        console.log(this.accessGroups);
+      }
+    } catch(error) {
+      console.error("Failed to load access groups");
+      console.error(error);
+    }
+  });
+
   CreateContentObject = flow(function * ({libraryId, mezContentType, formData}) {
     try {
       const response = yield this.client.CreateContentObject({
@@ -181,6 +202,7 @@ class IngestStore {
     files,
     title,
     abr,
+    accessGroupAddress,
     playbackEncryption="both",
     description,
     s3Url,
@@ -378,6 +400,10 @@ class IngestStore {
       },
     });
 
+    if(accessGroupAddress) {
+      yield this.client.AddContentObjectGroupPermission({objectId:masterObjectId, groupAddress: accessGroupAddress, permission: "manage"});
+    }
+
     // Finalize object
     const finalizeResponse = yield this.client.FinalizeContentObject({
       libraryId,
@@ -419,6 +445,7 @@ class IngestStore {
   CreateABRMezzanine = flow(function * ({
     libraryId,
     masterObjectId,
+    accessGroupAddress,
     abrProfile,
     name,
     description,
@@ -514,6 +541,7 @@ class IngestStore {
                 libraryId,
                 masterObjectId,
                 abrProfile,
+                accessGroup,
                 name,
                 description,
                 displayName,
@@ -560,6 +588,10 @@ class IngestStore {
               }
             }
           });
+
+          if(accessGroupAddress) {
+            await this.client.AddContentObjectGroupPermission({objectId, groupAddress: accessGroupAddress, permission: "manage"});
+          }
 
           this.FinalizeABRMezzanine({
             libraryId,

@@ -3,7 +3,7 @@ import {observer} from "mobx-react";
 
 import {ingestStore} from "Stores";
 import Dropzone from "Components/common/Dropzone";
-import LibraryWrapper from "Components/LibraryWrapper";
+import FabricLoader from "Components/FabricLoader";
 import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components/common/Inputs";
 import {Redirect} from "react-router-dom";
 import {s3Regions} from "Utils";
@@ -15,9 +15,11 @@ const Form = observer(() => {
   const [files, setFiles] = useState([]);
   const [masterAbr, setMasterAbr] = useState();
   const [masterLibrary, setMasterLibrary] = useState();
+  const [masterGroup, setMasterGroup] = useState();
   const [masterName, setMasterName] = useState();
 
   const [mezLibrary, setMezLibrary] = useState();
+  const [mezGroup, setMezGroup] = useState();
   const [masterDescription, setMasterDescription] = useState();
   const [mezName, setMezName] = useState();
   const [mezDescription, setMezDescription] = useState();
@@ -95,6 +97,26 @@ const Form = observer(() => {
         onChange={event => setMezLibrary(event.target.value)}
       />
 
+      <Select
+        label="AccessGroup"
+        labelDescription="This is the Access Group you want to manage your master object."
+        formName="mezGroup"
+        required={false}
+        options={
+          Object.keys(ingestStore.accessGroups || {}).map(accessGroupName => (
+            {
+              label: accessGroupName,
+              value: accessGroupName
+            }
+          ))
+        }
+        defaultOption={{
+          value: "",
+          label: "Select Access Group"
+        }}
+        onChange={event => setMezGroup(event.target.value)}
+      />
+
       <Input
         label="Name"
         required={true}
@@ -159,6 +181,7 @@ const Form = observer(() => {
           master: {
             abr: masterAbr,
             libraryId: masterLibrary,
+            accessGroup: masterGroup,
             files: uploadMethod === "local" ? files : undefined,
             title: masterName,
             description: masterDescription,
@@ -169,6 +192,7 @@ const Form = observer(() => {
           },
           mez: {
             libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
+            accessGroup: useMasterAsMez ? masterGroup : mezGroup,
             name: useMasterAsMez ? masterName : mezName,
             description: useMasterAsMez ? masterDescription : mezDescription,
             displayName,
@@ -186,7 +210,7 @@ const Form = observer(() => {
   if(masterObjectId) { return <Redirect to={`jobs/${masterObjectId}`} />; }
 
   return (
-    <LibraryWrapper>
+    <FabricLoader>
       <div className="page-container">
         <div className="page__header">Ingest New Media</div>
         <form className="form" onSubmit={HandleSubmit}>
@@ -331,6 +355,26 @@ const Form = observer(() => {
             })
           }
 
+          <Select
+            label="AccessGroup"
+            labelDescription="This is the Access Group you want to manage your master object."
+            formName="masterGroup"
+            required={false}
+            options={
+              Object.keys(ingestStore.accessGroups || {}).map(accessGroupName => (
+                {
+                  label: accessGroupName,
+                  value: accessGroupName
+                }
+              ))
+            }
+            defaultOption={{
+              value: "",
+              label: "Select Access Group"
+            }}
+            onChange={event => setMasterGroup(event.target.value)}
+          />
+
           <Input
             label="Name"
             required={true}
@@ -382,7 +426,7 @@ const Form = observer(() => {
           </div>
         </form>
       </div>
-    </LibraryWrapper>
+    </FabricLoader>
   );
 });
 
