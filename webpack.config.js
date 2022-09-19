@@ -5,6 +5,9 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 module.exports = {
   target: "web",
+  stats: {
+    warningsFilter: ["./node_modules/ethers/dist/ethers.min.js"]
+  },
   output: {
     chunkFilename: "[name].[contenthash].bundle.js",
   },
@@ -25,6 +28,11 @@ module.exports = {
     }
   },
   plugins: [
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: Path.join(__dirname, "configuration.js"), to: Path.join(__dirname, "dist", "configuration.js") }
+      ]
+    }),
     new HTMLWebpackPlugin({
       template: Path.join(__dirname, "src", "index.html"),
       title: "Eluvio Studio",
