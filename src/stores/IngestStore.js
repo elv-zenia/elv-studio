@@ -1,7 +1,8 @@
-import {flow, makeAutoObservable} from "mobx";
+import {flow, makeAutoObservable, toJS} from "mobx";
 import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
 import {FileInfo} from "../utils/Files";
+import {ingestStore} from "./index";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
 const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
@@ -33,12 +34,40 @@ class IngestStore {
     return this.libraries[libraryId];
   }
 
-  SetJob(jobId) {
+  SetJob = (jobId) => {
     this.job = this.jobs[jobId];
   }
 
-  UpdateIngestJobs({jobs}) {
+  UpdateIngestJobs = ({jobs}) => {
     this.jobs = jobs;
+  }
+
+  LoadJobs = () => {
+    const localStorageJobs = localStorage.getItem("elv-jobs");
+    let debounceTimeout;
+    let parsedJobs = {};
+
+    if(localStorageJobs) {
+      parsedJobs = JSON.parse(atob(localStorageJobs));
+    }
+
+    ingestStore.UpdateIngestJobs({jobs: parsedJobs});
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+      console.log("here?");
+      this.StartJobs();
+    }, 2000);
+    console.log("jobs", toJS(this.jobs));
+  }
+
+  RemoveJob = ({id}) => {
+    const jobs = this.jobs;
+    if(id in jobs) { delete jobs[id]; }
+    localStorage.setItem(
+      "elv-jobs",
+      btoa(JSON.stringify(jobs))
+    );
+    this.UpdateIngestJobs({jobs});
   }
 
   UpdateIngestObject = ({id, data}) => {
@@ -74,22 +103,6 @@ class IngestStore {
     localStorage.removeItem("elv-jobs");
   }
 
-  WaitForPublish = flow (function * ({hash, objectId}) {
-    let publishFinished = false;
-    let latestObjectHash;
-    while(!publishFinished) {
-      latestObjectHash = yield this.client.LatestVersionHash({
-        objectId
-      });
-
-      if(latestObjectHash === hash) {
-        publishFinished = true;
-      } else {
-        yield new Promise(resolve => setTimeout(resolve, 15000));
-      }
-    }
-  });
-
   GenerateEmbedUrl = ({versionHash, objectId}) => {
     const networkInfo = rootStore.networkInfo;
     let embedUrl = new URL("https://embed.v3.contentfabric.io");
@@ -108,6 +121,71 @@ class IngestStore {
 
     return embedUrl.toString();
   };
+
+  WaitForPublish = flow (function * ({hash, objectId}) {
+    let publishFinished = false;
+    let latestObjectHash;
+    while(!publishFinished) {
+      latestObjectHash = yield this.client.LatestVersionHash({
+        objectId
+      });
+
+      if(latestObjectHash === hash) {
+        publishFinished = true;
+      } else {
+        yield new Promise(resolve => setTimeout(resolve, 15000));
+      }
+    }
+  });
+
+  StartJobs = flow (function * () {
+    for(let jobId of Object.keys(this.jobs || {})) {
+      const job = this.jobs[jobId];
+      console.log("job", toJS(job));
+
+      const {abr, access, files, libraryId, title, description, writeToken, playbackEncryption} = job.formData.master;
+      const mezFormData = job.formData.mez;
+      console.log("mezFormData", mezFormData);
+
+      let response;
+      if(job.currentStep === "upload" && job.upload.runState === "finished") {
+        response = yield this.CreateProductionMaster({
+          libraryId,
+          files,
+          title,
+          description,
+          abr: JSON.parse(abr),
+          access: JSON.parse(access),
+          masterObjectId: jobId,
+          writeToken,
+          playbackEncryption
+        });
+        console.log("response", response);
+
+        // yield new Promise(resolve => setTimeout(resolve, 2000));
+
+        yield this.WaitForPublish({
+          hash: response.hash,
+          objectId: jobId
+        });
+      }
+
+      if(job.currentStep === "ingest") {
+        yield ingestStore.CreateABRMezzanine({
+          libraryId: mezFormData.libraryId,
+          masterObjectId: job.upload.masterObjectId,
+          masterVersionHash: job.upload.masterHash,
+          abrProfile: JSON.parse(job.upload.abrProfile),
+          type: job.upload.contentTypeId,
+          name: mezFormData.name,
+          description: mezFormData.description,
+          displayName: mezFormData.displayName,
+          newObject: mezFormData.newObject,
+          access: JSON.parse(access)
+        });
+      }
+    }
+  });
 
   LoadLibraries = flow(function * () {
     try {
@@ -176,35 +254,26 @@ class IngestStore {
     }
   });
 
-  CreateProductionMaster = flow(function * ({
+  UploadFiles = flow(function * ({
     libraryId,
+    masterObjectId,
     files,
-    title,
-    abr,
-    playbackEncryption="both",
-    description,
+    playbackEncryption,
     s3Url,
     access=[],
     copy,
-    masterObjectId,
-    writeToken
+    writeToken,
+    Callback
   }) {
-    ValidateLibrary(libraryId);
-
     this.UpdateIngestObject({
       id: masterObjectId,
       data: {
         ...this.jobs[masterObjectId],
         currentStep: "upload",
+        upload: {
+          runState: "running"
+        }
       }
-    });
-
-    // Create encryption conk
-    yield this.client.CreateEncryptionConk({
-      libraryId,
-      objectId: masterObjectId,
-      writeToken,
-      createKMSConk: true
     });
 
     try {
@@ -215,19 +284,21 @@ class IngestStore {
           uploadSum += fileProgress.uploaded;
           totalSum += fileProgress.total;
         });
+        const percentage = Math.round((uploadSum / totalSum) * 100);
+        Callback(percentage);
 
         this.UpdateIngestObject({
           id: masterObjectId,
           data: {
             ...this.jobs[masterObjectId],
             upload: {
-              percentage: Math.round((uploadSum / totalSum) * 100)
+              ...this.jobs[masterObjectId].upload,
+              percentage
             }
           }
         });
       };
 
-      // Upload files
       if(s3Url && access.length > 0) {
         const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
         const s3Reference = access[0];
@@ -256,7 +327,8 @@ class IngestStore {
           encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
         });
       } else {
-        const fileInfo = yield FileInfo("", files);
+        const fileInfo = yield FileInfo({path: "", fileList: files});
+        console.log("fileinfo", fileInfo);
 
         yield this.client.UploadFiles({
           libraryId,
@@ -277,18 +349,45 @@ class IngestStore {
       });
       console.error("Failed to upload files for object: ", masterObjectId);
       console.error(error);
+    } finally {
+      this.UpdateIngestObject({
+        id: masterObjectId,
+        data: {
+          ...this.jobs[masterObjectId],
+          upload: {
+            ...this.jobs[masterObjectId].upload,
+            runState: "finished"
+          }
+        }
+      });
     }
+  });
+
+  CreateProductionMaster = flow(function * ({
+    libraryId,
+    title,
+    abr,
+    playbackEncryption="both",
+    description,
+    access=[],
+    masterObjectId,
+    writeToken
+  }) {
+    ValidateLibrary(libraryId);
 
     this.UpdateIngestObject({
       id: masterObjectId,
       data: {
         ...this.jobs[masterObjectId],
-        upload: {
-          ...this.jobs[masterObjectId].upload,
-          complete: true,
-        },
         currentStep: "ingest"
       }
+    });
+    // Create encryption conk
+    yield this.client.CreateEncryptionConk({
+      libraryId,
+      objectId: masterObjectId,
+      writeToken,
+      createKMSConk: true
     });
 
     // Bitcode method
@@ -404,11 +503,22 @@ class IngestStore {
       }
     }
 
+    this.UpdateIngestObject({
+      id: masterObjectId,
+      data: {
+        ...this.jobs[masterObjectId],
+        upload: {
+          ...this.jobs[masterObjectId].upload,
+          abrProfile: JSON.stringify(abrProfile),
+          masterObjectId: finalizeResponse.id,
+          masterHash: finalizeResponse.hash,
+          contentTypeId: contentTypeId
+        }
+      }
+    });
+
     return Object.assign(
       finalizeResponse, {
-        abrProfile,
-        contentTypeId,
-        access,
         errors: errors || [],
         logs: logs || [],
         warnings: warnings || []
@@ -430,6 +540,20 @@ class IngestStore {
     offeringKey="default",
     access=[]
   }) {
+    console.log("Mez data", {
+      libraryId,
+      masterObjectId,
+      abrProfile,
+      name,
+      description,
+      displayName,
+      masterVersionHash,
+      type,
+      newObject,
+      variant,
+      offeringKey,
+      access
+    });
     let createResponse;
     try {
       createResponse = yield this.client.CreateABRMezzanine({
@@ -450,7 +574,6 @@ class IngestStore {
 
     yield this.WaitForPublish({
       hash: createResponse.hash,
-      libraryId,
       objectId
     });
 
@@ -462,7 +585,6 @@ class IngestStore {
 
     yield this.WaitForPublish({
       hash,
-      libraryId,
       objectId
     });
 

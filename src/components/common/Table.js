@@ -2,15 +2,25 @@ import React from "react";
 import {Link} from "react-router-dom";
 
 const Table = ({headers=[], rows=[]}) => {
-  if(!headers || !rows) { return null; }
+  if(headers.length < 1 || rows.length < 1) { return null; }
 
   const TableRowColumns = ({row}) => {
-    return row.cells.map(({label, description=""}) => (
-      <div key={`row-td-${label}`} className="table__column">
-        { label }
-        { description }
-      </div>
-    ));
+    return row.columns.map(({label="", description="", gridActions}, index) => {
+      if(gridActions) {
+        return (
+          <div key={`row-td-${label}`} className="table__column" />
+        );
+      }
+
+      return (
+        <Link to={`./jobs/${row.id}`} key={`row-td-${index}`} className="table__column">
+          <div key={`row-td-${label}`}>
+            {label}
+            {description}
+          </div>
+        </Link>
+      );
+    });
   };
 
   return (
@@ -27,9 +37,12 @@ const Table = ({headers=[], rows=[]}) => {
       <div className="table__body">
         {
           rows.map((row) => (
-            <Link to={`./jobs/${row.id}`} key={`row-${row.id}`} className="table__body__row table__body__row--clickable" role="tr">
+            <div
+              key={`row-${row.id}`}
+              className="table__body__row table__body__row--clickable"
+            >
               { TableRowColumns({row}) }
-            </Link>
+            </div>
           ))
         }
       </div>

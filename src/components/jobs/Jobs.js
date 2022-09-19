@@ -12,7 +12,8 @@ const Jobs = observer(() => {
   const statusMap = {
     "upload": "Uploading",
     "ingest": "Ingesting",
-    "finalize": "Finalizing"
+    "finalize": "Finalizing",
+    "failed": "Failed"
   };
 
   return (
@@ -36,18 +37,24 @@ const Jobs = observer(() => {
           headers={[
             {
               key: "jobs-header",
-              cells: [{label: "Object ID"}, {label: "Status"}]
+              columns: [{label: "Object ID"}, {label: "Status"}, {gridActions: true}]
             }
           ]}
           rows={
             Object.keys(ingestStore.jobs).map(jobId => (
               {
                 id: jobId,
-                cells: [
+                columns: [
                   {label: jobId},
                   {
                     label: ingestStore.jobs[jobId].finalize.complete ? "Complete" : statusMap[ingestStore.jobs[jobId].currentStep]
                   }
+                ],
+                gridActions: [
+                  {label: "Retry", onClick: () => {}},
+                  {label: "Cancel", onClick: () => {}},
+                  {separator: true},
+                  {label: "Remove", onClick: () => ingestStore.RemoveJob({id: jobId})}
                 ]
               }
             ))

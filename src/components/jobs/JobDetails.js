@@ -31,45 +31,23 @@ const JobDetails = observer(() => {
   };
 
   const HandleIngest = async () => {
-    if(ingestStore.job.currentStep !== "create" || !ingestStore.job.create.complete) { return; }
+    if(ingestStore.job.currentStep !== "create" || !ingestStore.job.create.complete) {
+      return;
+    }
 
-    const {abr, access, copy, files, libraryId, title, description, s3Url, writeToken, playbackEncryption} = ingestStore.job.formData.master;
-    const mezFormData = ingestStore.job.formData.mez;
-
-    const response = await ingestStore.CreateProductionMaster({
-      libraryId,
-      files,
-      title,
-      description,
-      s3Url,
-      abr: JSON.parse(abr),
-      access: JSON.parse(access),
-      copy,
-      masterObjectId: jobId,
-      writeToken,
-      playbackEncryption
-    });
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    await ingestStore.WaitForPublish({
-      hash: response.hash,
-      objectId: jobId,
-      libraryId: libraryId
-    });
-
-    await ingestStore.CreateABRMezzanine({
-      libraryId: mezFormData.libraryId,
-      masterObjectId: response.id,
-      masterVersionHash: response.hash,
-      abrProfile: response.abrProfile,
-      type: response.contentTypeId,
-      name: mezFormData.name,
-      description: mezFormData.description,
-      displayName: mezFormData.displayName,
-      newObject: mezFormData.newObject,
-      access: JSON.parse(access)
-    });
+    // const {
+    //   abr,
+    //   access,
+    //   copy,
+    //   files,
+    //   libraryId,
+    //   title,
+    //   description,
+    //   s3Url,
+    //   writeToken,
+    //   playbackEncryption
+    // } = ingestStore.job.formData.master;
+    // const mezFormData = ingestStore.job.formData.mez;
   };
 
   if(!ingestStore.job) { return <PageLoader />; }
@@ -86,9 +64,9 @@ const JobDetails = observer(() => {
             <div className="job-details__card__text__description">{ ingestStore.jobs[jobId].upload.complete ? "" : `${ingestStore.jobs[jobId].upload.percentage || 0}%` }</div>
           </div>
           <ImageIcon
-            icon={ingestStore.jobs[jobId].upload.complete ? CheckmarkIcon : LoadingIcon}
+            icon={ingestStore.jobs[jobId].upload.runState === "finished" ? CheckmarkIcon : LoadingIcon}
             className="job-details__card__icon"
-            label={ingestStore.jobs[jobId].upload.complete ? "Completed" : "In progress"}
+            label={ingestStore.jobs[jobId].upload.runState === "finished" ? "Completed" : "In progress"}
           />
         </div>
 

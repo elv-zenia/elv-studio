@@ -26,6 +26,7 @@ const Form = observer(() => {
   const [playbackEncryption, setPlaybackEncryption] = useState();
   const [useMasterAsMez, setUseMasterAsMez] = useState(true);
   const [disableDrm, setDisableDrm] = useState(false);
+  const [uploadPercentage, setUploadPercentage] = useState();
 
   const [s3Url, setS3Url] = useState();
   const [s3Region, setS3Region] = useState();
@@ -122,6 +123,7 @@ const Form = observer(() => {
     setIsCreating(true);
 
     let access = [];
+
     try {
       if(uploadMethod === "s3") {
         const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
@@ -152,6 +154,8 @@ const Form = observer(() => {
         }];
       }
 
+      console.log("files", files);
+
       const createResponse = await ingestStore.CreateContentObject({
         libraryId: masterLibrary,
         mezContentType: JSON.parse(masterAbr).mez_content_type,
@@ -175,6 +179,18 @@ const Form = observer(() => {
             newObject: !useMasterAsMez
           }
         }
+      });
+
+      await ingestStore.UploadFiles({
+        libraryId: masterLibrary,
+        masterObjectId: createResponse.id,
+        files: uploadMethod === "local" ? files : undefined,
+        s3Url: uploadMethod === "s3" ? s3Url : undefined,
+        playbackEncryption,
+        access: JSON.stringify(access, null, 2) || "",
+        copy: s3Copy,
+        writeToken: createResponse.write_token,
+        Callback: (value) => setUploadPercentage(value)
       });
 
       setMasterObjectId(createResponse.id);
@@ -379,6 +395,7 @@ const Form = observer(() => {
               value={isCreating ? "Submitting..." : "Create"}
               disabled={isCreating}
             />
+            { uploadPercentage === undefined ? null : `Uploading ${uploadPercentage}%` }
           </div>
         </form>
       </div>

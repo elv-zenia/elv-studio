@@ -24,21 +24,21 @@ const App = observer(() => {
 
   return (
     <div className="app-container">
-      <LeftNavigation />
-      <main>
-        <Switch>
-          <Redirect exact from="/" to="/jobs" />
-          {
-            appRoutes.map(({path, Component}) => (
-              <Route exact={true} key={path} path={path}>
-                <JobsWrapper>
+      <JobsWrapper>
+        <LeftNavigation />
+        <main>
+          <Switch>
+            <Redirect exact from="/" to="/jobs" />
+            {
+              appRoutes.map(({path, Component}) => (
+                <Route exact={true} key={path} path={path}>
                   <Component />
-                </JobsWrapper>
-              </Route>
-            ))
-          }
-        </Switch>
-      </main>
+                </Route>
+              ))
+            }
+          </Switch>
+        </main>
+      </JobsWrapper>
     </div>
   );
 });

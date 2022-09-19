@@ -8,7 +8,6 @@
     padding: 1rem;
 
     &__row {
-      background-color: $gray2;
       display: table-row;
     }
   }
@@ -26,6 +25,12 @@
       &--clickable {
         cursor: pointer;
 
+        &--disabled {
+          &:hover {
+            background-color: transparent;
+          }
+        }
+
         &:hover {
           background-color: $gray2;
         }
@@ -36,6 +41,16 @@
   &__column {
     display: table-cell;
     padding: 1rem;
+
+    &__icon {
+      height: 20px;
+      width: 20px;
+    }
+
+    &.grid-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
   }
 }
 
