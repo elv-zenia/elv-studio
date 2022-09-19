@@ -33,7 +33,7 @@ const JobDetails = observer(() => {
   const HandleIngest = async () => {
     if(ingestStore.job.currentStep !== "create" || !ingestStore.job.create.complete) { return; }
 
-    const {abr, access, copy, files, libraryId, title, description, s3Url, writeToken, playbackEncryption} = ingestStore.job.formData.master;
+    const {abr, access, copy, files, libraryId, title, accessGroup, description, s3Url, writeToken, playbackEncryption} = ingestStore.job.formData.master;
     const mezFormData = ingestStore.job.formData.mez;
 
     const response = await ingestStore.CreateProductionMaster({
@@ -43,6 +43,7 @@ const JobDetails = observer(() => {
       description,
       s3Url,
       abr: JSON.parse(abr),
+      accessGroupAddress: accessGroup,
       access: JSON.parse(access),
       copy,
       masterObjectId: jobId,
@@ -65,6 +66,7 @@ const JobDetails = observer(() => {
       abrProfile: response.abrProfile,
       type: response.contentTypeId,
       name: mezFormData.name,
+      accessGroupAddress: mezFormData.accessGroup,
       description: mezFormData.description,
       displayName: mezFormData.displayName,
       newObject: mezFormData.newObject,
