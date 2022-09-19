@@ -3,7 +3,7 @@ import {observer} from "mobx-react";
 
 import {ingestStore} from "Stores";
 import Dropzone from "Components/common/Dropzone";
-import LibraryWrapper from "Components/LibraryWrapper";
+import FabricLoader from "Components/FabricLoader";
 import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components/common/Inputs";
 import {Redirect} from "react-router-dom";
 import {s3Regions} from "Utils";
@@ -15,9 +15,11 @@ const Form = observer(() => {
   const [files, setFiles] = useState([]);
   const [masterAbr, setMasterAbr] = useState();
   const [masterLibrary, setMasterLibrary] = useState();
+  const [masterGroup, setMasterGroup] = useState();
   const [masterName, setMasterName] = useState();
 
   const [mezLibrary, setMezLibrary] = useState();
+  const [mezGroup, setMezGroup] = useState();
   const [masterDescription, setMasterDescription] = useState();
   const [mezName, setMezName] = useState();
   const [mezDescription, setMezDescription] = useState();
@@ -27,6 +29,7 @@ const Form = observer(() => {
   const [useMasterAsMez, setUseMasterAsMez] = useState(true);
   const [disableDrm, setDisableDrm] = useState(false);
   const [uploadPercentage, setUploadPercentage] = useState();
+  const [disableClear, setDisableClear] = useState(false);
 
   const [s3Url, setS3Url] = useState();
   const [s3Region, setS3Region] = useState();
@@ -52,6 +55,27 @@ const Form = observer(() => {
     id: "main-dropzone",
     onDrop: files => setFiles(files)
   });
+
+  useEffect(() => {
+    if(!masterAbr) {
+      setDisableDrm(true);
+      setDisableClear(true);
+      return;
+    }
+
+    const parsedProfile = JSON.parse(masterAbr);
+    const playoutFormats = Object.keys(
+      parsedProfile &&
+      parsedProfile.default_profile &&
+      parsedProfile.default_profile.playout_formats || {}
+    );
+
+    const drm = playoutFormats.filter(formatName => !formatName.includes("clear"));
+    const clear = playoutFormats.find(formatName => formatName.includes("clear"));
+
+    setDisableDrm(drm.length === 0);
+    setDisableClear(!clear);
+  }, [masterAbr]);
 
   const LibraryAbrInput = ({
     onChange,
@@ -96,6 +120,26 @@ const Form = observer(() => {
         onChange={event => setMezLibrary(event.target.value)}
       />
 
+      <Select
+        label="AccessGroup"
+        labelDescription="This is the Access Group you want to manage your master object."
+        formName="mezGroup"
+        required={false}
+        options={
+          Object.keys(ingestStore.accessGroups || {}).map(accessGroupName => (
+            {
+              label: accessGroupName,
+              value: accessGroupName
+            }
+          ))
+        }
+        defaultOption={{
+          value: "",
+          label: "Select Access Group"
+        }}
+        onChange={event => setMezGroup(event.target.value)}
+      />
+
       <Input
         label="Name"
         required={true}
@@ -123,7 +167,6 @@ const Form = observer(() => {
     setIsCreating(true);
 
     let access = [];
-
     try {
       if(uploadMethod === "s3") {
         const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
@@ -154,7 +197,8 @@ const Form = observer(() => {
         }];
       }
 
-      console.log("files", files);
+      let accessGroup = ingestStore.accessGroups[masterGroup] ? ingestStore.accessGroups[masterGroup].address : undefined;
+      let mezAccessGroupAddress = useMasterAsMez? accessGroup : ingestStore.accessGroups[mezGroup] ? ingestStore.accessGroups[mezGroup].address : undefined;
 
       const createResponse = await ingestStore.CreateContentObject({
         libraryId: masterLibrary,
@@ -163,6 +207,7 @@ const Form = observer(() => {
           master: {
             abr: masterAbr,
             libraryId: masterLibrary,
+            accessGroup,
             files: uploadMethod === "local" ? files : undefined,
             title: masterName,
             description: masterDescription,
@@ -173,6 +218,7 @@ const Form = observer(() => {
           },
           mez: {
             libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
+            accessGroup: mezAccessGroupAddress,
             name: useMasterAsMez ? masterName : mezName,
             description: useMasterAsMez ? masterDescription : mezDescription,
             displayName,
@@ -202,7 +248,7 @@ const Form = observer(() => {
   if(masterObjectId) { return <Redirect to={`jobs/${masterObjectId}`} />; }
 
   return (
-    <LibraryWrapper>
+    <FabricLoader>
       <div className="page-container">
         <div className="page__header">Ingest New Media</div>
         <form className="form" onSubmit={HandleSubmit}>
@@ -347,6 +393,26 @@ const Form = observer(() => {
             })
           }
 
+          <Select
+            label="AccessGroup"
+            labelDescription="This is the Access Group you want to manage your master object."
+            formName="masterGroup"
+            required={false}
+            options={
+              Object.keys(ingestStore.accessGroups || {}).map(accessGroupName => (
+                {
+                  label: accessGroupName,
+                  value: accessGroupName
+                }
+              ))
+            }
+            defaultOption={{
+              value: "",
+              label: "Select Access Group"
+            }}
+            onChange={event => setMasterGroup(event.target.value)}
+          />
+
           <Input
             label="Name"
             required={true}
@@ -368,8 +434,8 @@ const Form = observer(() => {
             required={true}
             options={[
               {value: "drm", label: "Digital Rights Management", disabled: disableDrm},
-              {value: "clear", label: "Clear"},
-              {value: "both", label: "Both", disabled: disableDrm},
+              {value: "clear", label: "Clear", disabled: disableClear},
+              {value: "both", label: "Both", disabled: disableDrm || disableClear},
             ]}
             defaultOption={{
               value: "",
@@ -399,7 +465,7 @@ const Form = observer(() => {
           </div>
         </form>
       </div>
-    </LibraryWrapper>
+    </FabricLoader>
   );
 });
 

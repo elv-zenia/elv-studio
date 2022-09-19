@@ -2,13 +2,13 @@ import {flow, makeAutoObservable, toJS} from "mobx";
 import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
 import {FileInfo} from "../utils/Files";
-import {ingestStore} from "./index";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
 const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
 
 class IngestStore {
   libraries;
+  accessGroups;
   loaded;
   jobs;
   job;
@@ -143,7 +143,7 @@ class IngestStore {
       const job = this.jobs[jobId];
       console.log("job", toJS(job));
 
-      const {abr, access, files, libraryId, title, description, writeToken, playbackEncryption} = job.formData.master;
+      const {abr, access, files, libraryId, title, description, writeToken, playbackEncryption, accessGroup} = job.formData.master;
       const mezFormData = job.formData.mez;
       console.log("mezFormData", mezFormData);
 
@@ -155,6 +155,7 @@ class IngestStore {
           title,
           description,
           abr: JSON.parse(abr),
+          accessGroupAddress: accessGroup,
           access: JSON.parse(access),
           masterObjectId: jobId,
           writeToken,
@@ -171,13 +172,14 @@ class IngestStore {
       }
 
       if(job.currentStep === "ingest") {
-        yield ingestStore.CreateABRMezzanine({
+        yield this.CreateABRMezzanine({
           libraryId: mezFormData.libraryId,
           masterObjectId: job.upload.masterObjectId,
           masterVersionHash: job.upload.masterHash,
           abrProfile: JSON.parse(job.upload.abrProfile),
           type: job.upload.contentTypeId,
           name: mezFormData.name,
+          accessGroupAddress: mezFormData.accessGroup,
           description: mezFormData.description,
           displayName: mezFormData.displayName,
           newObject: mezFormData.newObject,
@@ -226,11 +228,36 @@ class IngestStore {
     }
   });
 
+  LoadAccessGroups = flow(function * () {
+    try {
+      if(!this.accessGroups) {
+        this.accessGroups = {};
+        const accessGroups = yield this.client.ListAccessGroups();
+        accessGroups.map(async accessGroup => {
+          if(accessGroup.meta["name"]){
+            this.accessGroups[accessGroup.meta["name"]] = accessGroup;
+          } else {
+            this.accessGroups[accessGroup.id] = accessGroup;
+          }
+        });
+      }
+    } catch(error) {
+      console.error("Failed to load access groups");
+      console.error(error);
+    }
+  });
+
   CreateContentObject = flow(function * ({libraryId, mezContentType, formData}) {
     try {
+      const options = {
+        visibility: 0
+      };
+
+      if(mezContentType) { options["type"] = mezContentType; }
+
       const response = yield this.client.CreateContentObject({
         libraryId,
-        options: mezContentType ? { type: mezContentType } : {}
+        options
       });
 
       formData.master.writeToken = response.write_token;
@@ -486,6 +513,10 @@ class IngestStore {
       awaitCommitConfirmation: false
     });
 
+    if(accessGroupAddress) {
+      yield this.client.AddContentObjectGroupPermission({objectId:masterObjectId, groupAddress: accessGroupAddress, permission: "manage"});
+    }
+
     if(playbackEncryption !== "both") {
       let abrProfileExclude;
 
@@ -500,6 +531,7 @@ class IngestStore {
       } else {
         console.error("ABR Profile has no relevant playout formats.", abrProfileExclude);
         this.UpdateIngestErrors("errors", "Error: ABR Profile has no relevant playout formats.");
+        return;
       }
     }
 
@@ -529,6 +561,7 @@ class IngestStore {
   CreateABRMezzanine = flow(function * ({
     libraryId,
     masterObjectId,
+    accessGroupAddress,
     abrProfile,
     name,
     description,
@@ -540,20 +573,6 @@ class IngestStore {
     offeringKey="default",
     access=[]
   }) {
-    console.log("Mez data", {
-      libraryId,
-      masterObjectId,
-      abrProfile,
-      name,
-      description,
-      displayName,
-      masterVersionHash,
-      type,
-      newObject,
-      variant,
-      offeringKey,
-      access
-    });
     let createResponse;
     try {
       createResponse = yield this.client.CreateABRMezzanine({
@@ -636,6 +655,7 @@ class IngestStore {
                 libraryId,
                 masterObjectId,
                 abrProfile,
+                accessGroup : accessGroupAddress,
                 name,
                 description,
                 displayName,
@@ -688,6 +708,10 @@ class IngestStore {
             objectId,
             masterObjectId
           });
+
+          if(accessGroupAddress) {
+            await this.client.AddContentObjectGroupPermission({objectId, groupAddress: accessGroupAddress, permission: "manage"});
+          }
         }
       }, 1000);
 
