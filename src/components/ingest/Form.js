@@ -196,6 +196,9 @@ const Form = observer(() => {
         }];
       }
 
+      let accessGroup = ingestStore.accessGroups[masterGroup] ? ingestStore.accessGroups[masterGroup].address : undefined;
+      let mezAccessGroupAddress = useMasterAsMez? accessGroup : ingestStore.accessGroups[mezGroup] ? ingestStore.accessGroups[mezGroup].address : undefined;
+
       const createResponse = await ingestStore.CreateContentObject({
         libraryId: masterLibrary,
         mezContentType: JSON.parse(masterAbr).mez_content_type,
@@ -203,7 +206,7 @@ const Form = observer(() => {
           master: {
             abr: masterAbr,
             libraryId: masterLibrary,
-            accessGroup: masterGroup,
+            accessGroup,
             files: uploadMethod === "local" ? files : undefined,
             title: masterName,
             description: masterDescription,
@@ -214,7 +217,7 @@ const Form = observer(() => {
           },
           mez: {
             libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
-            accessGroup: useMasterAsMez ? masterGroup : mezGroup,
+            accessGroup: mezAccessGroupAddress,
             name: useMasterAsMez ? masterName : mezName,
             description: useMasterAsMez ? masterDescription : mezDescription,
             displayName,

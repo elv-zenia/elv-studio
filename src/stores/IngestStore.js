@@ -166,7 +166,6 @@ class IngestStore {
             this.accessGroups[accessGroup.id] = accessGroup;
           }
         });
-        console.log(this.accessGroups);
       }
     } catch(error) {
       console.error("Failed to load access groups");
@@ -411,10 +410,6 @@ class IngestStore {
       },
     });
 
-    if(accessGroupAddress) {
-      yield this.client.AddContentObjectGroupPermission({objectId:masterObjectId, groupAddress: accessGroupAddress, permission: "manage"});
-    }
-
     // Finalize object
     const finalizeResponse = yield this.client.FinalizeContentObject({
       libraryId,
@@ -423,6 +418,10 @@ class IngestStore {
       commitMessage: "Create master object",
       awaitCommitConfirmation: false
     });
+
+    if(accessGroupAddress) {
+      yield this.client.AddContentObjectGroupPermission({objectId:masterObjectId, groupAddress: accessGroupAddress, permission: "manage"});
+    }
 
     if(playbackEncryption !== "both") {
       let abrProfileExclude;
@@ -553,7 +552,7 @@ class IngestStore {
                 libraryId,
                 masterObjectId,
                 abrProfile,
-                accessGroup,
+                accessGroup : accessGroupAddress,
                 name,
                 description,
                 displayName,
@@ -601,15 +600,15 @@ class IngestStore {
             }
           });
 
-          if(accessGroupAddress) {
-            await this.client.AddContentObjectGroupPermission({objectId, groupAddress: accessGroupAddress, permission: "manage"});
-          }
-
           this.FinalizeABRMezzanine({
             libraryId,
             objectId,
             masterObjectId
           });
+
+          if(accessGroupAddress) {
+            await this.client.AddContentObjectGroupPermission({objectId, groupAddress: accessGroupAddress, permission: "manage"});
+          }
         }
       }, 1000);
 
