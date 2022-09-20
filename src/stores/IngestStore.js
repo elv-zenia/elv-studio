@@ -51,12 +51,11 @@ class IngestStore {
       parsedJobs = JSON.parse(atob(localStorageJobs));
     }
 
-    ingestStore.UpdateIngestJobs({jobs: parsedJobs});
-    clearTimeout(debounceTimeout);
+    this.UpdateIngestJobs({jobs: parsedJobs});
     debounceTimeout = setTimeout(() => {
-      console.log("here?");
       this.StartJobs();
     }, 2000);
+    clearTimeout(debounceTimeout);
     console.log("jobs", toJS(this.jobs));
   }
 
