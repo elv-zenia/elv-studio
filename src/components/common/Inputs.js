@@ -113,7 +113,7 @@ export const JsonTextArea = ({
 
   const HandleChange = event => {
     try {
-      const json = JSON.stringify(ParseInputJson(modifiedJSON), null, 2);
+      const json = JSON.stringify(ParseInputJson({metadata: modifiedJSON}), null, 2);
       setModifiedJSON(json);
 
       event.target.value = json;

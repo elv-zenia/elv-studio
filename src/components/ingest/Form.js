@@ -56,24 +56,33 @@ const Form = observer(() => {
   });
 
   useEffect(() => {
-    if(!masterAbr) {
+    const DisableAll = () => {
       setDisableDrm(true);
       setDisableClear(true);
-      return;
+    };
+
+    if(!masterAbr) {
+      DisableAll();
+    } else {
+      try {
+        const parsedProfile = JSON.parse(masterAbr);
+        const playoutFormats = Object.keys(
+          parsedProfile &&
+          parsedProfile.default_profile &&
+          parsedProfile.default_profile.playout_formats || {}
+        );
+
+        const drm = playoutFormats.filter(formatName => !formatName.includes("clear"));
+        const clear = playoutFormats.find(formatName => formatName.includes("clear"));
+
+        setDisableDrm(drm.length === 0);
+        setDisableClear(!clear);
+      } catch(error) {
+        console.error(error);
+        DisableAll();
+      }
     }
 
-    const parsedProfile = JSON.parse(masterAbr);
-    const playoutFormats = Object.keys(
-      parsedProfile &&
-      parsedProfile.default_profile &&
-      parsedProfile.default_profile.playout_formats || {}
-    );
-
-    const drm = playoutFormats.filter(formatName => !formatName.includes("clear"));
-    const clear = playoutFormats.find(formatName => formatName.includes("clear"));
-
-    setDisableDrm(drm.length === 0);
-    setDisableClear(!clear);
   }, [masterAbr]);
 
   const LibraryAbrInput = ({
