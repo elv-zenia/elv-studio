@@ -175,15 +175,14 @@ class IngestStore {
 
   CreateContentObject = flow(function * ({libraryId, mezContentType, formData}) {
     try {
-      const options = {
-        visibility: 0
-      };
-
-      if(mezContentType) { options["type"] = mezContentType; }
-
       const response = yield this.client.CreateContentObject({
         libraryId,
-        options
+        options: mezContentType ? { type: mezContentType } : {}
+      });
+
+      yield this.client.SetVisibility({
+        id: response.id,
+        visibility: 0
       });
 
       formData.master.writeToken = response.write_token;
