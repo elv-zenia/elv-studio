@@ -56,24 +56,33 @@ const Form = observer(() => {
   });
 
   useEffect(() => {
-    if(!masterAbr) {
+    const DisableAll = () => {
       setDisableDrm(true);
       setDisableClear(true);
-      return;
+    };
+
+    if(!masterAbr) {
+      DisableAll();
+    } else {
+      try {
+        const parsedProfile = JSON.parse(masterAbr);
+        const playoutFormats = Object.keys(
+          parsedProfile &&
+          parsedProfile.default_profile &&
+          parsedProfile.default_profile.playout_formats || {}
+        );
+
+        const drm = playoutFormats.filter(formatName => !formatName.includes("clear"));
+        const clear = playoutFormats.find(formatName => formatName.includes("clear"));
+
+        setDisableDrm(drm.length === 0);
+        setDisableClear(!clear);
+      } catch(error) {
+        console.error(error);
+        DisableAll();
+      }
     }
 
-    const parsedProfile = JSON.parse(masterAbr);
-    const playoutFormats = Object.keys(
-      parsedProfile &&
-      parsedProfile.default_profile &&
-      parsedProfile.default_profile.playout_formats || {}
-    );
-
-    const drm = playoutFormats.filter(formatName => !formatName.includes("clear"));
-    const clear = playoutFormats.find(formatName => formatName.includes("clear"));
-
-    setDisableDrm(drm.length === 0);
-    setDisableClear(!clear);
   }, [masterAbr]);
 
   const LibraryAbrInput = ({
@@ -168,26 +177,33 @@ const Form = observer(() => {
     let access = [];
     try {
       if(uploadMethod === "s3") {
-        const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
-        const s3prefixMatch = (s3prefixRegex.exec(s3Url));
+        let cloudCredentials;
+        let bucket;
+        if(s3Url) {
+          const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+          const s3prefixMatch = (s3prefixRegex.exec(s3Url));
 
-        const bucket = s3prefixMatch[1];
-
-        const cloudCredentials = s3UseAKSecret ?
-          {
+          bucket = s3prefixMatch[1];
+          cloudCredentials = {
             access_key_id: s3AccessKey,
             secret_access_key: s3Secret
-          } :
-          {
+          };
+        } else if(s3PresignedUrl) {
+          const s3prefixRegex = /^https:\/\/([^/]+)\//i;
+          const s3prefixMatch = (s3prefixRegex.exec(s3PresignedUrl));
+          bucket = s3prefixMatch[1].split(".")[0];
+
+          cloudCredentials = {
             signed_url: s3PresignedUrl
           };
+        }
 
         access = [{
           path_matchers: [".*"],
           remote_access: {
             protocol: "s3",
             platform: "aws",
-            path: bucket + "/",
+            path: `${bucket}/`,
             storage_endpoint: {
               region: s3Region
             },
@@ -278,14 +294,15 @@ const Form = observer(() => {
           {/* S3 Details */}
           {
             uploadMethod === "s3" && <>
-              <Input
-                label="S3 URI"
-                formName="s3Url"
-                value={s3Url}
-                onChange={event => setS3Url(event.target.value)}
-                placeholder="s3://BUCKET_NAME/PATH_TO_MEDIA.mp4"
-                required={uploadMethod === "s3"}
-              />
+              {
+                !s3UseAKSecret &&
+                <TextArea
+                  label="Presigned URL"
+                  value={s3PresignedUrl}
+                  onChange={event => setS3PresignedUrl(event.target.value)}
+                  required={uploadMethod === "s3" && !s3UseAKSecret}
+                />
+              }
 
               <Select
                 label="Region"
@@ -310,17 +327,16 @@ const Form = observer(() => {
               />
 
               {
-                !s3UseAKSecret &&
-                <TextArea
-                  label="Presigned URL"
-                  value={s3PresignedUrl}
-                  onChange={event => setS3PresignedUrl(event.target.value)}
-                  required={uploadMethod === "s3" && !s3UseAKSecret}
-                />
-              }
-              {
                 s3UseAKSecret &&
                   <>
+                    <Input
+                      label="S3 URI"
+                      formName="s3Url"
+                      value={s3Url}
+                      onChange={event => setS3Url(event.target.value)}
+                      placeholder="s3://BUCKET_NAME/PATH_TO_MEDIA.mp4"
+                      required={uploadMethod === "s3"}
+                    />
                     <Input
                       label="Access key"
                       formName="s3AccessKey"

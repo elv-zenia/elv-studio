@@ -1,11 +1,11 @@
 // Parse JSON for input values
 // -- Allows whitespace and blank
 // -- Rejects quoted strings which JSON.parse allows (e.g. JSON.parse('"string"')
-export const ParseInputJson = (metadata) => {
+export const ParseInputJson = ({metadata, defaultValue = {}}) => {
   if(typeof metadata === "string") {
     metadata = metadata.trim();
 
-    if(metadata === "") { return {}; }
+    if(metadata === "") { return defaultValue; }
 
     if(!metadata.startsWith("{") && !metadata.startsWith("[")) { throw Error("Invalid JSON"); }
 
@@ -21,5 +21,5 @@ export const ParseInputJson = (metadata) => {
     }
   }
 
-  return metadata || {};
+  return metadata || defaultValue;
 };

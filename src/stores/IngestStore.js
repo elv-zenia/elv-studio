@@ -2,6 +2,7 @@ import {flow, makeAutoObservable} from "mobx";
 import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
 import {FileInfo} from "../utils/Files";
+import Path from "path";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
 const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
@@ -259,24 +260,24 @@ class IngestStore {
       };
 
       // Upload files
-      if(s3Url && access.length > 0) {
-        const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+      if(access.length > 0) {
         const s3Reference = access[0];
-
         const region = s3Reference.remote_access.storage_endpoint.region;
         const bucket = s3Reference.remote_access.path.replace(/\/$/, "");
-        const path = s3Url.replace(s3prefixRegex, "");
         const accessKey = s3Reference.remote_access.cloud_credentials.access_key_id;
         const secret = s3Reference.remote_access.cloud_credentials.secret_access_key;
         const signedUrl = s3Reference.remote_access.cloud_credentials.signed_url;
+        const baseName = decodeURIComponent(Path.basename(
+          s3Url ? s3Url : signedUrl.split("?")[0]
+        ));
 
         yield this.client.UploadFilesFromS3({
           libraryId,
           objectId: masterObjectId,
           writeToken,
           fileInfo: [{
-            path,
-            source: s3Url
+            path: baseName,
+            source: baseName
           }],
           region,
           bucket,
@@ -308,6 +309,7 @@ class IngestStore {
       });
       console.error("Failed to upload files for object: ", masterObjectId);
       console.error(error);
+      return;
     }
 
     this.UpdateIngestObject({
@@ -344,6 +346,7 @@ class IngestStore {
       });
       console.error("Failed to call media/production_master/init");
       this.UpdateIngestErrors("errors", "Error: Unable to ingest selected media file.");
+      return;
     }
 
     // Check if audio and video streams
