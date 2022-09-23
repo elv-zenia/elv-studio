@@ -260,14 +260,16 @@ class IngestStore {
       };
 
       // Upload files
-      if(s3Url && access.length > 0) {
+      if(access.length > 0) {
         const s3Reference = access[0];
         const region = s3Reference.remote_access.storage_endpoint.region;
         const bucket = s3Reference.remote_access.path.replace(/\/$/, "");
         const accessKey = s3Reference.remote_access.cloud_credentials.access_key_id;
         const secret = s3Reference.remote_access.cloud_credentials.secret_access_key;
         const signedUrl = s3Reference.remote_access.cloud_credentials.signed_url;
-        const baseName = decodeURIComponent(Path.basename(s3Url));
+        const baseName = decodeURIComponent(Path.basename(
+          s3Url ? s3Url : signedUrl.split("?")[0]
+        ));
 
         yield this.client.UploadFilesFromS3({
           libraryId,
