@@ -179,19 +179,19 @@ const Form = observer(() => {
       if(uploadMethod === "s3") {
         let cloudCredentials;
         let bucket;
-        if(s3Url) {
-          const s3prefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
-          const s3prefixMatch = (s3prefixRegex.exec(s3Url));
+        if(s3UseAKSecret && s3Url) {
+          const s3PrefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+          const s3PrefixMatch = (s3PrefixRegex.exec(s3Url));
 
-          bucket = s3prefixMatch[1];
+          bucket = s3PrefixMatch[1];
           cloudCredentials = {
             access_key_id: s3AccessKey,
             secret_access_key: s3Secret
           };
         } else if(s3PresignedUrl) {
-          const s3prefixRegex = /^https:\/\/([^/]+)\//i;
-          const s3prefixMatch = (s3prefixRegex.exec(s3PresignedUrl));
-          bucket = s3prefixMatch[1].split(".")[0];
+          const httpsPrefixRegex = /^https:\/\/([^/]+)\//i;
+          const httpsPrefixMatch = (httpsPrefixRegex.exec(s3PresignedUrl));
+          bucket = httpsPrefixMatch[1].split(".")[0];
 
           cloudCredentials = {
             signed_url: s3PresignedUrl
@@ -317,6 +317,7 @@ const Form = observer(() => {
                   label: "Select region"
                 }}
                 onChange={event => setS3Region(event.target.value)}
+                required={s3UseAKSecret}
               />
 
               <Checkbox
