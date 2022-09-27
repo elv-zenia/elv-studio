@@ -42,6 +42,7 @@ export const Select = ({
 
 export const Input = ({
   label,
+  labelDescription,
   required,
   value,
   formName,
@@ -57,6 +58,7 @@ export const Input = ({
         { label }
         <span className="form__input-label--required">{ required ? " *" : ""}</span>
       </label>
+      <div className="form__input-description">{ labelDescription }</div>
       <input
         type={type}
         name={formName}
@@ -102,7 +104,9 @@ export const JsonTextArea = ({
   onChange,
   label,
   labelDescription,
-  required
+  required,
+  disabled,
+  defaultValue
 }) => {
   const [modifiedJSON, setModifiedJSON] = useState(value);
   const [error, setError] = useState();
@@ -113,7 +117,10 @@ export const JsonTextArea = ({
 
   const HandleChange = event => {
     try {
-      const json = JSON.stringify(ParseInputJson({metadata: modifiedJSON}), null, 2);
+      const json = JSON.stringify(
+        ParseInputJson(
+          {metadata: modifiedJSON, defaultValue}
+        ), null, 2);
       setModifiedJSON(json);
 
       event.target.value = json;
@@ -128,11 +135,11 @@ export const JsonTextArea = ({
 
   return (
     <>
-      <label htmlFor={formName} className="form__input-label">
+      <label htmlFor={formName} className={`form__input-label${disabled ? " form__input-label--disabled" : ""}`}>
         { label }
         <span className="form__input-label--required">{ required ? " *" : ""}</span>
       </label>
-      <div className="form__input-description">{ labelDescription }</div>
+      <div className={`form__input-description${disabled ? " form__input-description--disabled" : ""}`}>{ labelDescription }</div>
       <textarea
         name={formName}
         value={modifiedJSON || ""}
@@ -140,6 +147,7 @@ export const JsonTextArea = ({
         aria-errormessage={error}
         onChange={event => setModifiedJSON(event.target.value)}
         onBlur={HandleChange}
+        disabled={disabled}
         className={`form__json-field${error ? " form__json-field--invalid" : ""}`}
       />
     </>

@@ -428,7 +428,7 @@ class IngestStore {
     if(playbackEncryption !== "both") {
       let abrProfileExclude;
 
-      if(playbackEncryption === "drm") {
+      if(playbackEncryption.includes("drm")) {
         abrProfileExclude = ABR.ProfileExcludeClear(abrProfile);
       } else if(playbackEncryption === "clear") {
         abrProfileExclude = ABR.ProfileExcludeDRM(abrProfile);
