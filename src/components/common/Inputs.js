@@ -9,7 +9,8 @@ export const Select = ({
   defaultOption={},
   formName,
   onChange,
-  disabled
+  disabled,
+  value
 }) => {
   return (
     <>
@@ -23,6 +24,7 @@ export const Select = ({
         name={formName}
         onChange={onChange}
         disabled={disabled}
+        value={value}
       >
         {
           "label" in defaultOption && "value" in defaultOption ?

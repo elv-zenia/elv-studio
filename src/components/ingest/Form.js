@@ -6,7 +6,7 @@ import Dropzone from "Components/common/Dropzone";
 import FabricLoader from "Components/FabricLoader";
 import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components/common/Inputs";
 import {Redirect} from "react-router-dom";
-import {abrProfileClear, abrProfileDrm, abrProfileRestrictedDrm, s3Regions} from "Utils";
+import {abrProfileClear, s3Regions} from "Utils";
 
 const Form = observer(() => {
   const [isCreating, setIsCreating] = useState(false);
@@ -24,11 +24,13 @@ const Form = observer(() => {
   const [mezName, setMezName] = useState();
   const [mezDescription, setMezDescription] = useState();
   const [mezContentType, setMezContentType] = useState();
+  const [showMezContentType, setShowMezContentType] = useState(false);
 
   const [displayName, setDisplayName] = useState();
-  const [playbackEncryption, setPlaybackEncryption] = useState();
+  const [playbackEncryption, setPlaybackEncryption] = useState("");
   const [useMasterAsMez, setUseMasterAsMez] = useState(true);
   const [disableDrm, setDisableDrm] = useState(false);
+  const [disableClear, setDisableClear] = useState(false);
 
   const [s3Url, setS3Url] = useState();
   const [s3Region, setS3Region] = useState();
@@ -38,14 +40,54 @@ const Form = observer(() => {
   const [s3PresignedUrl, setS3PresignedUrl] = useState();
   const [s3UseAKSecret, setS3UseAKSecret] = useState(false);
 
+  const SetPlaybackSettings = ({libraryId, type}) => {
+    const library = ingestStore.GetLibrary(libraryId);
+    const hasDrmCert = library.drmCert;
+
+    if(type === "master" && useMasterAsMez || type === "mez") {
+      const abr = JSON.stringify(library.abr, null, 2) || "";
+      setAbrProfile(abr);
+      const profile = library.abr && library.abr.default_profile;
+
+      if(profile) {
+        const hasClear = Object.keys(profile.playout_formats).find(formatName => formatName.includes("clear"));
+        const hasDrm = hasDrmCert && (
+          Object.keys(profile.playout_formats).find(format => profile.playout_formats[format].drm !== null)
+        );
+
+        setDisableDrm(!hasDrm);
+        setDisableClear(!hasClear);
+        if(playbackEncryption === "custom") { setPlaybackEncryption(""); }
+      } else {
+        setPlaybackEncryption("custom");
+        setAbrProfile(JSON.stringify({default_profile: abrProfileClear}, null, 2));
+      }
+    }
+  };
+
+  useEffect(() => {
+    if(!abrProfile) { return; }
+    const profile = JSON.parse(abrProfile);
+    setShowMezContentType(!profile.mez_content_type);
+  }, [abrProfile]);
+
   useEffect(() => {
     if(!ingestStore.libraries || !ingestStore.GetLibrary(masterLibrary)) { return; }
 
-    const library = ingestStore.GetLibrary(masterLibrary);
-    const hasDrmCert = library.drmCert;
-
-    setDisableDrm(!hasDrmCert);
+    SetPlaybackSettings({
+      libraryId: masterLibrary,
+      type: "master"
+    });
   }, [masterLibrary]);
+
+  useEffect(() => {
+    if(!ingestStore.libraries || !ingestStore.GetLibrary(mezLibrary)) { return; }
+
+    SetPlaybackSettings({
+      libraryId: mezLibrary,
+      type: "mez"
+    });
+  }, [mezLibrary]);
 
   const dropzone = Dropzone({
     accept: {"audio/*": [], "video/*": []},
@@ -55,38 +97,31 @@ const Form = observer(() => {
 
   useEffect(() => {
     const SetProfile = (abr) => {
-      const profile = JSON.stringify(abr, null, 2);
+      const profile = JSON.stringify({default_profile: abr}, null, 2);
       setAbrProfile(profile);
     };
 
-    switch(playbackEncryption) {
-      case "drm":
-        SetProfile(abrProfileDrm);
-        break;
-      case "drm-restricted":
-        SetProfile(abrProfileRestrictedDrm);
-        break;
-      case "clear":
-        SetProfile(abrProfileClear);
-        break;
-      case "custom":
-        SetProfile({
-          drm_optional: true,
-          store_clear: true,
-          playout_formats: {},
-          ladder_specs: {},
-          segment_specs: {}
-        });
-        break;
-      case "":
-      default:
-        break;
+    if(playbackEncryption === "custom") {
+      SetProfile(abrProfileClear);
     }
   }, [playbackEncryption]);
 
   const mezDetails = (
     <>
       <h1 className="form__section-header">Mezzanine Object Details</h1>
+      <Input
+        label="Name"
+        formName="mezName"
+        onChange={event => setMezName(event.target.value)}
+        value={mezName}
+      />
+      <Input
+        label="Description"
+        formName="mezDescription"
+        onChange={event => setMezDescription(event.target.value)}
+        value={mezDescription}
+      />
+
       <Select
         label="Library"
         labelDescription="This is the library where your mezzanine object will be created."
@@ -126,26 +161,6 @@ const Form = observer(() => {
         }}
         onChange={event => setMezGroup(event.target.value)}
       />
-
-      <Input
-        label="Name"
-        required={true}
-        formName="mezName"
-        onChange={event => setMezName(event.target.value)}
-        value={mezName}
-      />
-      <Input
-        label="Display Name"
-        formName="displayName"
-        onChange={event => setDisplayName(event.target.value)}
-        value={displayName}
-      />
-      <Input
-        label="Description"
-        formName="mezDescription"
-        onChange={event => setMezDescription(event.target.value)}
-        value={mezDescription}
-      />
     </>
   );
 
@@ -156,7 +171,7 @@ const Form = observer(() => {
       !masterName ||
       !playbackEncryption ||
       playbackEncryption === "custom" && !abrProfile ||
-      !mezContentType
+      showMezContentType && !mezContentType
     ) {
       return false;
     }
@@ -225,14 +240,17 @@ const Form = observer(() => {
 
       let accessGroup = ingestStore.accessGroups[masterGroup] ? ingestStore.accessGroups[masterGroup].address : undefined;
       let mezAccessGroupAddress = useMasterAsMez? accessGroup : ingestStore.accessGroups[mezGroup] ? ingestStore.accessGroups[mezGroup].address : undefined;
-      const abrMetadata = JSON.stringify({
-        default_profile: JSON.parse(abrProfile),
-        mez_content_type: mezContentType
-      }, null, 2);
+      let abrMetadata = abrProfile;
+      if(showMezContentType) {
+        abrMetadata = JSON.stringify({
+          ...JSON.parse(abrProfile),
+          mez_content_type: mezContentType
+        }, null, 2);
+      }
 
       const createResponse = await ingestStore.CreateContentObject({
         libraryId: masterLibrary,
-        mezContentType,
+        mezContentType: showMezContentType ? mezContentType : JSON.parse(abrMetadata).mez_content_type,
         formData: {
           master: {
             abr: abrMetadata,
@@ -249,7 +267,7 @@ const Form = observer(() => {
           mez: {
             libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
             accessGroup: mezAccessGroupAddress,
-            name: useMasterAsMez ? masterName : mezName,
+            name: mezName || masterName,
             description: useMasterAsMez ? masterDescription : mezDescription,
             displayName,
             newObject: !useMasterAsMez
@@ -383,24 +401,24 @@ const Form = observer(() => {
           }
 
           <h1 className="form__section-header">Master Object Details</h1>
-          <Select
-            label="Library"
-            labelDescription="This is the library where your master object will be created."
-            formName="masterLibrary"
+          <Input
+            label="Name"
             required={true}
-            options={
-              Object.keys(ingestStore.libraries || {}).map(libraryId => (
-                {
-                  label: ingestStore.libraries[libraryId].name || "",
-                  value: libraryId
-                }
-              ))
-            }
-            defaultOption={{
-              value: "",
-              label: "Select library"
-            }}
-            onChange={event => setMasterLibrary(event.target.value)}
+            formName="masterName"
+            onChange={event => setMasterName(event.target.value)}
+            value={masterName}
+          />
+          <Input
+            label="Description"
+            formName="masterDescription"
+            onChange={event => setMasterDescription(event.target.value)}
+            value={masterDescription}
+          />
+          <Input
+            label="Display Name"
+            formName="displayName"
+            onChange={event => setDisplayName(event.target.value)}
+            value={displayName}
           />
 
           <Select
@@ -423,54 +441,24 @@ const Form = observer(() => {
             onChange={event => setMasterGroup(event.target.value)}
           />
 
-          <Input
-            label="Name"
-            required={true}
-            formName="masterName"
-            onChange={event => setMasterName(event.target.value)}
-            value={masterName}
-          />
-          <Input
-            label="Description"
-            formName="masterDescription"
-            onChange={event => setMasterDescription(event.target.value)}
-            value={masterDescription}
-          />
-
           <Select
-            label="Playback Encryption"
-            labelDescription="Select a playback encryption option. Enable Clear or Digital Rights Management copy protection during playback. Restricted DRM will have only Widevine and Fairplay options. To configure the ABR profile entirely, use the Custom option."
-            formName="playbackEncryption"
+            label="Library"
+            labelDescription="This is the library where your master object will be created."
+            formName="masterLibrary"
             required={true}
-            options={[
-              {value: "drm", label: "Digital Rights Management (standard)", disabled: disableDrm},
-              {value: "drm-restricted", label: "Digital Rights Management (restricted)", disabled: disableDrm},
-              {value: "clear", label: "Clear"},
-              {value: "custom", label: "Custom"}
-            ]}
+            options={
+              Object.keys(ingestStore.libraries || {}).map(libraryId => (
+                {
+                  label: ingestStore.libraries[libraryId].name || "",
+                  value: libraryId
+                }
+              ))
+            }
             defaultOption={{
               value: "",
-              label: "Select encryption"
+              label: "Select library"
             }}
-            value={playbackEncryption}
-            onChange={event => setPlaybackEncryption(event.target.value)}
-          />
-
-          <JsonTextArea
-            formName="abrProfile"
-            label="ABR Profile Metadata"
-            value={abrProfile}
-            onChange={event => setAbrProfile(event.target.value)}
-            required={playbackEncryption === "custom"}
-            disabled={playbackEncryption !== "custom"}
-          />
-
-          <Input
-            label="Mezzanine Content Type"
-            labelDescription="This will determine the type for the mezzanine object creation. Enter a valid object ID, version hash, or title."
-            value={mezContentType}
-            onChange={event => setMezContentType(event.target.value)}
-            required={true}
+            onChange={event => setMasterLibrary(event.target.value)}
           />
 
           <Checkbox
@@ -481,6 +469,48 @@ const Form = observer(() => {
           />
 
           { !useMasterAsMez && mezDetails }
+
+          <h1 className="form__section-header">Playback Settings</h1>
+          <Select
+            label="Playback Encryption"
+            labelDescription="Select a playback encryption option. Enable Clear or Digital Rights Management copy protection during playback. Restricted DRM will have only Widevine and Fairplay options. To configure the ABR profile entirely, use the Custom option."
+            formName="playbackEncryption"
+            required={true}
+            options={[
+              {value: "drm", label: "Digital Rights Management (all formats)", disabled: disableDrm},
+              {value: "drm-restricted", label: "Digital Rights Management (restricted)", disabled: disableDrm},
+              {value: "clear", label: "Clear", disabled: disableClear},
+              {value: "custom", label: "Custom"}
+            ]}
+            defaultOption={{
+              value: "",
+              label: "Select encryption"
+            }}
+            value={playbackEncryption}
+            onChange={event => setPlaybackEncryption(event.target.value)}
+          />
+
+          {
+            playbackEncryption === "custom" &&
+            <JsonTextArea
+              formName="abrProfile"
+              label="ABR Profile Metadata"
+              value={abrProfile}
+              onChange={event => setAbrProfile(event.target.value)}
+              required={playbackEncryption === "custom"}
+            />
+          }
+
+          {
+            showMezContentType &&
+            <Input
+              label="Mezzanine Content Type"
+              labelDescription="This will determine the type for the mezzanine object creation. Enter a valid object ID, version hash, or title."
+              value={mezContentType}
+              onChange={event => setMezContentType(event.target.value)}
+              required={true}
+            />
+          }
 
           <div>
             <input

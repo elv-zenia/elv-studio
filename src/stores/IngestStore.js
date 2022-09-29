@@ -425,7 +425,7 @@ class IngestStore {
       yield this.client.AddContentObjectGroupPermission({objectId:masterObjectId, groupAddress: accessGroupAddress, permission: "manage"});
     }
 
-    if(playbackEncryption !== "both") {
+    if(playbackEncryption !== "custom") {
       let abrProfileExclude;
 
       if(playbackEncryption.includes("drm")) {
