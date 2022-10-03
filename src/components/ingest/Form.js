@@ -462,7 +462,7 @@ const Form = observer(() => {
           />
 
           <Checkbox
-            label="Use master object as mezzanine object"
+            label="Use Master Object as Mezzanine Object"
             value={useMasterAsMez}
             checked={useMasterAsMez}
             onChange={event => setUseMasterAsMez(event.target.checked)}
