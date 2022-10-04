@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@eluvio/elv-abr-profile": "^1.0.0",
-    "@eluvio/elv-client-js": "^3.2.29",
+    "@eluvio/elv-client-js": "^3.2.30",
     "@eluvio/elv-lro-status": "^3.0.3",
     "@radix-ui/react-dialog": "^1.0.0",
     "@radix-ui/react-tooltip": "^1.0.0",
@@ -50,10 +50,12 @@
     "sass": "^1.52.1",
     "sass-lint-auto-fix": "^0.21.2",
     "sass-loader": "^13.0.0",
+    "stream-browserify": "^3.0.0",
     "style-loader": "^3.3.1",
     "stylelint": "^14.8.5",
     "stylelint-config-standard-scss": "^4.0.0",
     "svg-inline-loader": "^0.8.2",
+    "vm-browserify": "^1.1.2",
     "webpack": "5.72.1",
     "webpack-cli": "4.10.0",
     "webpack-dev-server": "4.9.0"
