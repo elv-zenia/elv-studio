@@ -27,7 +27,7 @@ const App = observer(() => {
       <LeftNavigation />
       <main>
         <Switch>
-          <Redirect exact from="/" to="/jobs" />
+          <Redirect exact from="/" to="/new" />
           {
             appRoutes.map(({path, Component}) => (
               <Route exact={true} key={path} path={path}>
