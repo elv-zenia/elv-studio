@@ -53,8 +53,16 @@ module.exports = {
       Utils: Path.resolve(__dirname, "src/utils")
     },
     fallback: {
-      fs: false,
-      "crypto": require.resolve("crypto-browserify")
+      "fs": false,
+      "tls": false,
+      "net": false,
+      "path": false,
+      "zlib": false,
+      "http": false,
+      "https": false,
+      "crypto": require.resolve("crypto-browserify"),
+      "stream": require.resolve("stream-browserify"),
+      "vm": require.resolve("vm-browserify")
     },
     extensions: [".js", ".jsx", ".scss", ".png", ".svg"]
   },
