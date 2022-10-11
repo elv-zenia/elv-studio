@@ -134,6 +134,8 @@ class IngestStore {
               ]
             }));
 
+            if(!response) { return; }
+
             this.libraries[libraryId] = {
               libraryId,
               name: response.public && response.public.name || libraryId,
