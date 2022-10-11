@@ -93,6 +93,7 @@ class IngestStore {
       } catch(error) {
         console.error(error);
         console.error(`Waiting for master object publishing hash:${hash}. Retrying.`);
+        yield new Promise(resolve => setTimeout(resolve, 5000));
       }
     }
   });
