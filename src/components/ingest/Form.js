@@ -103,6 +103,9 @@ const Form = observer(() => {
 
     if(playbackEncryption === "custom") {
       SetProfile(abrProfileClear);
+      const existingType = JSON.parse(abrProfile || "{}").mez_content_type;
+
+      if(existingType) { setMezContentType(existingType); }
     }
   }, [playbackEncryption]);
 
@@ -140,6 +143,7 @@ const Form = observer(() => {
           label: "Select library"
         }}
         onChange={event => setMezLibrary(event.target.value)}
+        value={mezLibrary}
       />
 
       <Select
@@ -465,7 +469,12 @@ const Form = observer(() => {
             label="Use Master Object as Mezzanine Object"
             value={useMasterAsMez}
             checked={useMasterAsMez}
-            onChange={event => setUseMasterAsMez(event.target.checked)}
+            onChange={event => {
+              setMezName(masterName);
+              setMezDescription(masterDescription);
+              setMezLibrary(masterLibrary);
+              setUseMasterAsMez(event.target.checked);
+            }}
           />
 
           { !useMasterAsMez && mezDetails }
