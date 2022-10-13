@@ -94,7 +94,7 @@ class IngestStore {
       } catch(error) {
         console.error(error);
         console.error(`Waiting for master object publishing hash:${hash}. Retrying.`);
-        yield new Promise(resolve => setTimeout(resolve, 5000));
+        yield new Promise(resolve => setTimeout(resolve, 7000));
       }
     }
   });
@@ -199,7 +199,8 @@ class IngestStore {
           currentStep: "create",
           formData,
           create: {
-            complete: true
+            complete: true,
+            runState: "finished"
           }
         }
       });
@@ -231,7 +232,7 @@ class IngestStore {
       id: masterObjectId,
       data: {
         ...this.jobs[masterObjectId],
-        currentStep: "upload",
+        currentStep: "upload"
       }
     });
 
@@ -308,7 +309,10 @@ class IngestStore {
         id: masterObjectId,
         data: {
           ...this.jobs[masterObjectId],
-          currentStep: "failed"
+          upload: {
+            ...this.jobs[masterObjectId].upload,
+            runState: "failed"
+          }
         }
       });
       console.error("Failed to upload files for object: ", masterObjectId);
@@ -323,6 +327,7 @@ class IngestStore {
         upload: {
           ...this.jobs[masterObjectId].upload,
           complete: true,
+          runState: "finished"
         },
         currentStep: "ingest"
       }
@@ -345,7 +350,9 @@ class IngestStore {
         id: masterObjectId,
         data: {
           ...this.jobs[masterObjectId],
-          currentStep: "failed"
+          ingest: {
+            runState: "failed"
+          }
         }
       });
       console.error("Failed to call media/production_master/init");
@@ -441,6 +448,16 @@ class IngestStore {
       if(abrProfileExclude.ok) {
         abrProfile = abrProfileExclude.result;
       } else {
+        this.UpdateIngestObject({
+          id: masterObjectId,
+          data: {
+            ...this.jobs[masterObjectId],
+            ingest: {
+              ...this.jobs[masterObjectId].ingest,
+              runState: "failed"
+            }
+          }
+        });
         console.error("ABR Profile has no relevant playout formats.", abrProfileExclude);
         this.UpdateIngestErrors("errors", "Error: ABR Profile has no relevant playout formats.");
         return;
@@ -487,6 +504,17 @@ class IngestStore {
         offeringKey
       });
     } catch(error) {
+      this.UpdateIngestObject({
+        id: masterObjectId,
+        data: {
+          ...this.jobs[masterObjectId],
+          ingest: {
+            ...this.jobs[masterObjectId].ingest,
+            runState: "failed"
+          }
+        }
+      });
+
       console.error(`Failed to create mezzanine object: ${masterObjectId}`);
       console.error(error);
     }
@@ -533,6 +561,17 @@ class IngestStore {
         const enhancedStatus = enhanceLROStatus(options, status);
 
         if(!enhancedStatus.ok) {
+          this.UpdateIngestObject({
+            id: masterObjectId,
+            data: {
+              ...this.jobs[masterObjectId],
+              ingest: {
+                ...this.jobs[masterObjectId].ingest,
+                runState: "failed"
+              }
+            }
+          });
+
           console.error("Error processing LRO status");
           this.UpdateIngestErrors("errors", "Error: Unable to transcode selected file.");
           clearInterval(statusIntervalId);
@@ -640,6 +679,17 @@ class IngestStore {
       });
 
       if(!production_master || !production_master.sources || !production_master.variants || !production_master.variants.default) {
+        this.UpdateIngestObject({
+          id: objectId,
+          data: {
+            ...this.jobs[objectId],
+            ingest: {
+              ...this.jobs[objectId].ingest,
+              runState: "failed"
+            }
+          }
+        });
+
         console.error("Unable to create ABR profile.");
         this.UpdateIngestErrors("errors", "Error: Unable to create ABR profile.");
         return;
@@ -652,6 +702,17 @@ class IngestStore {
       );
 
       if(!generatedProfile.ok) {
+        this.UpdateIngestObject({
+          id: objectId,
+          data: {
+            ...this.jobs[objectId],
+            ingest: {
+              ...this.jobs[objectId].ingest,
+              runState: "failed"
+            }
+          }
+        });
+
         console.error("Generated profile returned error.", generatedProfile);
         this.UpdateIngestErrors("errors", "Error: Unable to create ABR profile.");
         return;
@@ -662,6 +723,17 @@ class IngestStore {
         contentTypeId: abr.mez_content_type
       };
     } catch(error) {
+      this.UpdateIngestObject({
+        id: objectId,
+        data: {
+          ...this.jobs[objectId],
+          ingest: {
+            ...this.jobs[objectId].ingest,
+            runState: "failed"
+          }
+        }
+      });
+
       console.error(`Failed to create ABR ladder for object: ${objectId}`);
       console.error(error);
       this.UpdateIngestErrors("errors", "Error: Unable to create ABR profile.");
@@ -689,12 +761,24 @@ class IngestStore {
           ...this.jobs[masterObjectId],
           finalize: {
             complete: true,
+            runState: "finished",
             mezzanineHash: finalizeAbrResponse.hash,
             objectId: finalizeAbrResponse.id
           }
         }
       });
     } catch(error) {
+      this.UpdateIngestObject({
+        id: objectId,
+        data: {
+          ...this.jobs[objectId],
+          finalize: {
+            ...this.jobs[objectId].finalize,
+            runState: "failed"
+          }
+        }
+      });
+
       console.error("Unable to finalize mezzanine object");
       console.error(error);
       this.UpdateIngestErrors("errors", "Error: Unable to transcode selected file.");

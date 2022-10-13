@@ -6,7 +6,7 @@ import Dropzone from "Components/common/Dropzone";
 import FabricLoader from "Components/FabricLoader";
 import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components/common/Inputs";
 import {Redirect} from "react-router-dom";
-import {abrProfileClear, s3Regions} from "Utils";
+import {abrProfileClear, abrProfileDrm, abrProfileRestrictedDrm, s3Regions} from "Utils";
 
 const Form = observer(() => {
   const [isCreating, setIsCreating] = useState(false);
@@ -106,15 +106,26 @@ const Form = observer(() => {
       setAbrProfile(profile);
     };
 
-    if(playbackEncryption === "custom") {
-      try {
+    switch(playbackEncryption) {
+      case "drm-restricted":
+        SetProfile(abrProfileRestrictedDrm);
+        break;
+      case "drm":
+        SetProfile(abrProfileDrm);
+        break;
+      case "clear":
+      case "custom":
+      default:
         SetProfile(abrProfileClear);
-        const profileMezType = JSON.parse(abrProfile || "{}").mez_content_type;
+        break;
+    }
 
-        if(profileMezType) { setMezContentType(profileMezType); }
-      } catch(error) {
-        console.error(error);
-      }
+    try {
+      const profileMezType = JSON.parse(abrProfile || "{}").mez_content_type;
+
+      if(profileMezType) { setMezContentType(profileMezType); }
+    } catch(error) {
+      console.error(error);
     }
   }, [playbackEncryption]);
 

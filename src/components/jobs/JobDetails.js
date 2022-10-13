@@ -31,7 +31,7 @@ const JobDetails = observer(() => {
   };
 
   const HandleIngest = async () => {
-    if(ingestStore.job.currentStep !== "create" || !ingestStore.job.create.complete) { return; }
+    if(ingestStore.job.currentStep !== "create" || ingestStore.job.create.runState !== "finished") { return; }
 
     const {abr, access, copy, files, libraryId, title, accessGroup, description, s3Url, writeToken, playbackEncryption} = ingestStore.job.formData.master;
     const mezFormData = ingestStore.job.formData.mez;
@@ -85,22 +85,40 @@ const JobDetails = observer(() => {
         <div className="job-details__card">
           <div className="job-details__card__text">
             <div>Uploading</div>
-            <div className="job-details__card__text__description">{ ingestStore.jobs[jobId].upload.complete ? "" : `${ingestStore.jobs[jobId].upload.percentage || 0}%` }</div>
+            <div className="job-details__card__text__description">
+              {
+                ["finished", "failed"].includes(ingestStore.jobs[jobId].upload.runState) ? "" : `${ingestStore.jobs[jobId].upload.percentage || 0}%`
+              }
+            </div>
           </div>
-          <ImageIcon
-            icon={ingestStore.jobs[jobId].upload.complete ? CheckmarkIcon : LoadingIcon}
-            className="job-details__card__icon"
-            label={ingestStore.jobs[jobId].upload.complete ? "Completed" : "In progress"}
-          />
+          {
+            ingestStore.jobs[jobId].upload.runState === "failed" ?
+              <div className={"job-details__card__failed-text"}>
+                Failed
+              </div> :
+              <ImageIcon
+                icon={ingestStore.jobs[jobId].upload.runState === "finished" ? CheckmarkIcon : LoadingIcon}
+                className="job-details__card__icon"
+                label={ingestStore.jobs[jobId].upload.runState === "finished" ? "Completed" : "In progress"}
+              />
+          }
         </div>
 
         <div className="job-details__card">
           <div className="job-details__card__text">
             <div>Converting to streaming format</div>
-            <div className="job-details__card__text__description">{ ingestStore.jobs[jobId].ingest.estimatedTimeLeft || "" }</div>
+            <div className="job-details__card__text__description">
+              {
+                ingestStore.jobs[jobId].ingest.runState === "failed" ? "" : ingestStore.jobs[jobId].ingest.estimatedTimeLeft || ""
+              }
+            </div>
           </div>
           {
-            ["ingest", "finalize"].includes(ingestStore.jobs[jobId].currentStep) &&
+            ingestStore.jobs[jobId].ingest.runState === "failed" ?
+              <div className={"job-details__card__failed-text"}>
+                Failed
+              </div> :
+              ["ingest", "finalize"].includes(ingestStore.jobs[jobId].currentStep) &&
             <ImageIcon
               icon={ingestStore.jobs[jobId].ingest.runState === "finished" ? CheckmarkIcon : LoadingIcon}
               className="job-details__card__icon"
@@ -114,7 +132,11 @@ const JobDetails = observer(() => {
             <div>Finalizing</div>
           </div>
           {
-            ingestStore.jobs[jobId].currentStep === "finalize" &&
+            ingestStore.jobs[jobId].finalize.runState === "failed" ?
+              <div className={"job-details__card__failed-text"}>
+                Failed
+              </div> :
+              ingestStore.jobs[jobId].currentStep === "finalize" &&
             <ImageIcon
               icon={CheckmarkIcon}
               className="job-details__card__icon"
