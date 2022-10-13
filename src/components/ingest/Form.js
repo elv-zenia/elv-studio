@@ -57,6 +57,7 @@ const Form = observer(() => {
 
         setDisableDrm(!hasDrm);
         setDisableClear(!hasClear);
+
         if(playbackEncryption === "custom") { setPlaybackEncryption(""); }
       } else {
         setPlaybackEncryption("custom");
@@ -67,8 +68,12 @@ const Form = observer(() => {
 
   useEffect(() => {
     if(!abrProfile) { return; }
-    const profile = JSON.parse(abrProfile);
-    setShowMezContentType(!profile.mez_content_type);
+    try {
+      const profile = JSON.parse(abrProfile);
+      setShowMezContentType(!profile.mez_content_type);
+    } catch(error) {
+      console.error(error);
+    }
   }, [abrProfile]);
 
   useEffect(() => {
@@ -102,10 +107,14 @@ const Form = observer(() => {
     };
 
     if(playbackEncryption === "custom") {
-      SetProfile(abrProfileClear);
-      const existingType = JSON.parse(abrProfile || "{}").mez_content_type;
+      try {
+        SetProfile(abrProfileClear);
+        const profileMezType = JSON.parse(abrProfile || "{}").mez_content_type;
 
-      if(existingType) { setMezContentType(existingType); }
+        if(profileMezType) { setMezContentType(profileMezType); }
+      } catch(error) {
+        console.error(error);
+      }
     }
   }, [playbackEncryption]);
 

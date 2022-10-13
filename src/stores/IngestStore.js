@@ -1,7 +1,7 @@
 import {flow, makeAutoObservable} from "mobx";
 import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
-import {FileInfo} from "../utils/Files";
+import {FileInfo} from "Utils/Files";
 import Path from "path";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
@@ -19,8 +19,9 @@ class IngestStore {
   };
 
   constructor(rootStore) {
-    this.rootStore = rootStore;
     makeAutoObservable(this);
+
+    this.rootStore = rootStore;
   }
 
   get client() {

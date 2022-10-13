@@ -55,7 +55,16 @@ const ladderSpecs = {
     "{\"media_type\":\"audio\",\"channels\":2}": {
       "rung_specs": [
         {
-          "bit_rate": 128000,
+          "bit_rate": 192000,
+          "media_type": "audio",
+          "pregenerate": true
+        }
+      ]
+    },
+    "{\"media_type\":\"audio\",\"channels\":6}": {
+      "rung_specs": [
+        {
+          "bit_rate": 384000,
           "media_type": "audio",
           "pregenerate": true
         }
