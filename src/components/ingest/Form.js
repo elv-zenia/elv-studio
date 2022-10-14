@@ -59,13 +59,8 @@ const Form = observer(() => {
 
         setDisableDrm(!hasDrm);
         setDisableClear(!hasClear);
-
-        if(playbackEncryption === "custom") {
-          setPlaybackEncryption("");
-        }
       } else {
-        setPlaybackEncryption("custom");
-        setAbrProfile(JSON.stringify({default_profile: abrProfileClear}, null, 2));
+        setAbrProfile(JSON.stringify({default_profile: {}}, null, 2));
       }
     }
   };
@@ -108,9 +103,10 @@ const Form = observer(() => {
         SetProfile(abrProfileDrm);
         break;
       case "clear":
+        SetProfile(abrProfileClear);
+        break;
       case "custom":
       default:
-        SetProfile(abrProfileClear);
         break;
     }
   }, [playbackEncryption]);
