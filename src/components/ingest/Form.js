@@ -41,6 +41,7 @@ const Form = observer(() => {
   const SetPlaybackSettings = ({libraryId, type}) => {
     const library = ingestStore.GetLibrary(libraryId);
     const hasDrmCert = library.drmCert;
+    setDisableDrm(!hasDrmCert);
 
     if(type === "master" && useMasterAsMez || type === "mez") {
       const abr = JSON.stringify(library.abr, null, 2) || "";
@@ -50,9 +51,7 @@ const Form = observer(() => {
 
       setMezContentType(mezContentType);
 
-      if(profile && Object.keys(profile).length > 0) {
-        setDisableDrm(!hasDrmCert);
-      } else {
+      if(!profile || Object.keys(profile).length === 0) {
         setAbrProfile(JSON.stringify({default_profile: {}}, null, 2));
       }
     }
