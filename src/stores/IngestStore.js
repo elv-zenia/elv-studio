@@ -123,7 +123,7 @@ class IngestStore {
       if(!this.libraries) {
         this.libraries = {};
 
-        const libraryIds = yield this.client.ContentLibraries();
+        const libraryIds = yield this.client.ContentLibraries() || [];
         yield Promise.all(
           libraryIds.map(async libraryId => {
             const response = (await this.client.ContentObjectMetadata({
@@ -163,7 +163,7 @@ class IngestStore {
     try {
       if(!this.accessGroups) {
         this.accessGroups = {};
-        const accessGroups = yield this.client.ListAccessGroups();
+        const accessGroups = yield this.client.ListAccessGroups() || [];
         accessGroups.map(async accessGroup => {
           if(accessGroup.meta["name"]){
             this.accessGroups[accessGroup.meta["name"]] = accessGroup;
