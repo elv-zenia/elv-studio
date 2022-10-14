@@ -24,7 +24,6 @@ const Form = observer(() => {
   const [mezName, setMezName] = useState();
   const [mezDescription, setMezDescription] = useState();
   const [mezContentType, setMezContentType] = useState();
-  const [showMezContentType, setShowMezContentType] = useState(false);
 
   const [displayName, setDisplayName] = useState();
   const [playbackEncryption, setPlaybackEncryption] = useState("");
@@ -70,10 +69,6 @@ const Form = observer(() => {
       }
     }
   };
-
-  useEffect(() => {
-    setShowMezContentType(!mezContentType);
-  }, [mezContentType]);
 
   useEffect(() => {
     if(!ingestStore.libraries || !ingestStore.GetLibrary(masterLibrary)) { return; }
@@ -185,8 +180,7 @@ const Form = observer(() => {
       !masterLibrary ||
       !masterName ||
       !playbackEncryption ||
-      playbackEncryption === "custom" && !abrProfile ||
-      showMezContentType && !mezContentType
+      playbackEncryption === "custom" && !abrProfile
     ) {
       return false;
     }
@@ -255,17 +249,14 @@ const Form = observer(() => {
 
       let accessGroup = ingestStore.accessGroups[masterGroup] ? ingestStore.accessGroups[masterGroup].address : undefined;
       let mezAccessGroupAddress = useMasterAsMez? accessGroup : ingestStore.accessGroups[mezGroup] ? ingestStore.accessGroups[mezGroup].address : undefined;
-      let abrMetadata = abrProfile;
-      if(showMezContentType) {
-        abrMetadata = JSON.stringify({
-          ...JSON.parse(abrProfile),
-          mez_content_type: mezContentType
-        }, null, 2);
-      }
+      const abrMetadata = JSON.stringify({
+        ...JSON.parse(abrProfile),
+        mez_content_type: mezContentType
+      }, null, 2);
 
       const createResponse = await ingestStore.CreateContentObject({
         libraryId: masterLibrary,
-        mezContentType: showMezContentType ? mezContentType : JSON.parse(abrMetadata).mez_content_type,
+        mezContentType: mezContentType || JSON.parse(abrMetadata).mez_content_type,
         formData: {
           master: {
             abr: abrMetadata,
@@ -522,16 +513,13 @@ const Form = observer(() => {
             />
           }
 
-          {
-            showMezContentType &&
-            <Input
-              label="Mezzanine Content Type"
-              labelDescription="This will determine the type for the mezzanine object creation. Enter a valid object ID, version hash, or title."
-              value={mezContentType}
-              onChange={event => setMezContentType(event.target.value)}
-              required={true}
-            />
-          }
+          <Input
+            label="Mezzanine Content Type"
+            labelDescription="This will determine the type for the mezzanine object creation. Enter a valid object ID, version hash, or title."
+            value={mezContentType}
+            onChange={event => setMezContentType(event.target.value)}
+            required={true}
+          />
 
           <div>
             <input
