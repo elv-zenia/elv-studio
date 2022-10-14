@@ -48,6 +48,9 @@ const Form = observer(() => {
       const abr = JSON.stringify(library.abr, null, 2) || "";
       setAbrProfile(abr);
       const profile = library.abr && library.abr.default_profile;
+      const mezContentType = library.abr && library.abr.mez_content_type;
+
+      setMezContentType(mezContentType);
 
       if(profile) {
         const hasClear = Object.keys(profile.playout_formats).find(formatName => formatName.includes("clear"));
@@ -58,7 +61,9 @@ const Form = observer(() => {
         setDisableDrm(!hasDrm);
         setDisableClear(!hasClear);
 
-        if(playbackEncryption === "custom") { setPlaybackEncryption(""); }
+        if(playbackEncryption === "custom") {
+          setPlaybackEncryption("");
+        }
       } else {
         setPlaybackEncryption("custom");
         setAbrProfile(JSON.stringify({default_profile: abrProfileClear}, null, 2));
@@ -67,14 +72,8 @@ const Form = observer(() => {
   };
 
   useEffect(() => {
-    if(!abrProfile) { return; }
-    try {
-      const profile = JSON.parse(abrProfile);
-      setShowMezContentType(!profile.mez_content_type);
-    } catch(error) {
-      console.error(error);
-    }
-  }, [abrProfile]);
+    setShowMezContentType(!mezContentType);
+  }, [mezContentType]);
 
   useEffect(() => {
     if(!ingestStore.libraries || !ingestStore.GetLibrary(masterLibrary)) { return; }
@@ -118,14 +117,6 @@ const Form = observer(() => {
       default:
         SetProfile(abrProfileClear);
         break;
-    }
-
-    try {
-      const profileMezType = JSON.parse(abrProfile || "{}").mez_content_type;
-
-      if(profileMezType) { setMezContentType(profileMezType); }
-    } catch(error) {
-      console.error(error);
     }
   }, [playbackEncryption]);
 
