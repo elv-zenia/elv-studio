@@ -275,6 +275,8 @@ class IngestStore {
         const baseName = decodeURIComponent(Path.basename(
           s3Url ? s3Url : signedUrl.split("?")[0]
         ));
+        // should be full path when using AK/Secret
+        const source = s3Url ? s3Url : baseName;
 
         yield this.client.UploadFilesFromS3({
           libraryId,
@@ -282,7 +284,7 @@ class IngestStore {
           writeToken,
           fileInfo: [{
             path: baseName,
-            source: baseName
+            source
           }],
           region,
           bucket,
