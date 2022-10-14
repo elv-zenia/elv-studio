@@ -527,6 +527,7 @@ const Form = observer(() => {
               value={abrProfile}
               onChange={event => setAbrProfile(event.target.value)}
               required={playbackEncryption === "custom"}
+              defaultValue={{default_profile: {}}}
             />
           }
 
