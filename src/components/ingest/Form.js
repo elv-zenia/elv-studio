@@ -29,7 +29,6 @@ const Form = observer(() => {
   const [playbackEncryption, setPlaybackEncryption] = useState("");
   const [useMasterAsMez, setUseMasterAsMez] = useState(true);
   const [disableDrm, setDisableDrm] = useState(false);
-  const [disableClear, setDisableClear] = useState(false);
 
   const [s3Url, setS3Url] = useState();
   const [s3Region, setS3Region] = useState();
@@ -51,14 +50,8 @@ const Form = observer(() => {
 
       setMezContentType(mezContentType);
 
-      if(profile) {
-        const hasClear = Object.keys(profile.playout_formats).find(formatName => formatName.includes("clear"));
-        const hasDrm = hasDrmCert && (
-          Object.keys(profile.playout_formats).find(format => profile.playout_formats[format].drm !== null)
-        );
-
-        setDisableDrm(!hasDrm);
-        setDisableClear(!hasClear);
+      if(profile && Object.keys(profile).length > 0) {
+        setDisableDrm(!hasDrmCert);
       } else {
         setAbrProfile(JSON.stringify({default_profile: {}}, null, 2));
       }
@@ -486,7 +479,7 @@ const Form = observer(() => {
             options={[
               {value: "drm", label: "Digital Rights Management (all formats)", disabled: disableDrm},
               {value: "drm-restricted", label: "Digital Rights Management (restricted)", disabled: disableDrm},
-              {value: "clear", label: "Clear", disabled: disableClear},
+              {value: "clear", label: "Clear"},
               {value: "custom", label: "Custom"}
             ]}
             defaultOption={{
