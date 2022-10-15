@@ -336,18 +336,39 @@ class IngestStore {
     });
 
     // Bitcode method
-    const {logs, warnings, errors} = yield this.client.CallBitcodeMethod({
-      libraryId,
-      objectId: masterObjectId,
-      writeToken,
-      method: UrlJoin("media", "production_master", "init"),
-      body: {
-        access
-      },
-      constant: false
-    });
+    let logs;
+    let warnings;
+    let errors;
+    try {
+      const response = yield this.client.CallBitcodeMethod({
+        libraryId,
+        objectId: masterObjectId,
+        writeToken,
+        method: UrlJoin("media", "production_master", "init"),
+        body: {
+          access
+        },
+        constant: false
+      });
+      logs = response.logs;
+      warnings = response.warnings;
+      errors = response.errors;
 
-    if(errors) {
+      if(errors) {
+        this.UpdateIngestObject({
+          id: masterObjectId,
+          data: {
+            ...this.jobs[masterObjectId],
+            ingest: {
+              runState: "failed"
+            }
+          }
+        });
+        console.error("Failed to call media/production_master/init");
+        this.UpdateIngestErrors("errors", "Error: Unable to ingest selected media file.");
+        return;
+      }
+    } catch(error) {
       this.UpdateIngestObject({
         id: masterObjectId,
         data: {
@@ -357,8 +378,9 @@ class IngestStore {
           }
         }
       });
-      console.error("Failed to call media/production_master/init");
-      this.UpdateIngestErrors("errors", "Error: Unable to ingest selected media file.");
+
+      console.error(error);
+      console.error(`Failed to probe files for object: ${masterObjectId}`);
       return;
     }
 
