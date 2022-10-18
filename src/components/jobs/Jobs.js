@@ -9,10 +9,23 @@ const Jobs = observer(() => {
     return <div className="page-container">No active jobs.</div>;
   }
 
-  const statusMap = {
-    "upload": "Uploading",
-    "ingest": "Ingesting",
-    "finalize": "Finalizing"
+  const JobStatus = ({job}) => {
+    const statusMap = {
+      "upload": "Uploading",
+      "ingest": "Ingesting",
+      "finalize": "Finalizing"
+    };
+    if(job.finalize.runState === "finished") {
+      return "Complete";
+    } else if(
+      job.upload.runState === "failed" ||
+      job.ingest.runState === "failed" ||
+      job.finalize.runState === "failed"
+    ) {
+      return "Failed";
+    } else {
+      return statusMap[job.currentStep];
+    }
   };
 
   return (
@@ -46,7 +59,7 @@ const Jobs = observer(() => {
                 cells: [
                   {label: jobId},
                   {
-                    label: ingestStore.jobs[jobId].finalize.complete ? "Complete" : statusMap[ingestStore.jobs[jobId].currentStep]
+                    label: JobStatus({job: ingestStore.jobs[jobId]})
                   }
                 ]
               }

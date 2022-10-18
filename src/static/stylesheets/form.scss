@@ -24,8 +24,13 @@
 
   &__input-description {
     color: $gray3;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 400;
     margin-bottom: 0.5rem;
+
+    &--disabled {
+      opacity: 0.5;
+    }
   }
 
   input[type="text"],

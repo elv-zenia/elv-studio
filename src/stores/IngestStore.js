@@ -1,7 +1,7 @@
 import {flow, makeAutoObservable} from "mobx";
 import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
-import {FileInfo} from "../utils/Files";
+import {FileInfo} from "Utils/Files";
 import Path from "path";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
@@ -19,8 +19,9 @@ class IngestStore {
   };
 
   constructor(rootStore) {
-    this.rootStore = rootStore;
     makeAutoObservable(this);
+
+    this.rootStore = rootStore;
   }
 
   get client() {
@@ -93,6 +94,7 @@ class IngestStore {
       } catch(error) {
         console.error(error);
         console.error(`Waiting for master object publishing hash:${hash}. Retrying.`);
+        yield new Promise(resolve => setTimeout(resolve, 7000));
       }
     }
   });
@@ -121,7 +123,7 @@ class IngestStore {
       if(!this.libraries) {
         this.libraries = {};
 
-        const libraryIds = yield this.client.ContentLibraries();
+        const libraryIds = yield this.client.ContentLibraries() || [];
         yield Promise.all(
           libraryIds.map(async libraryId => {
             const response = (await this.client.ContentObjectMetadata({
@@ -133,6 +135,8 @@ class IngestStore {
                 "elv/media/drm/fps/cert"
               ]
             }));
+
+            if(!response) { return; }
 
             this.libraries[libraryId] = {
               libraryId,
@@ -159,7 +163,7 @@ class IngestStore {
     try {
       if(!this.accessGroups) {
         this.accessGroups = {};
-        const accessGroups = yield this.client.ListAccessGroups();
+        const accessGroups = yield this.client.ListAccessGroups() || [];
         accessGroups.map(async accessGroup => {
           if(accessGroup.meta["name"]){
             this.accessGroups[accessGroup.meta["name"]] = accessGroup;
@@ -195,7 +199,8 @@ class IngestStore {
           currentStep: "create",
           formData,
           create: {
-            complete: true
+            complete: true,
+            runState: "finished"
           }
         }
       });
@@ -227,7 +232,7 @@ class IngestStore {
       id: masterObjectId,
       data: {
         ...this.jobs[masterObjectId],
-        currentStep: "upload",
+        currentStep: "upload"
       }
     });
 
@@ -270,6 +275,8 @@ class IngestStore {
         const baseName = decodeURIComponent(Path.basename(
           s3Url ? s3Url : signedUrl.split("?")[0]
         ));
+        // should be full path when using AK/Secret
+        const source = s3Url ? s3Url : baseName;
 
         yield this.client.UploadFilesFromS3({
           libraryId,
@@ -277,7 +284,7 @@ class IngestStore {
           writeToken,
           fileInfo: [{
             path: baseName,
-            source: baseName
+            source
           }],
           region,
           bucket,
@@ -304,7 +311,10 @@ class IngestStore {
         id: masterObjectId,
         data: {
           ...this.jobs[masterObjectId],
-          currentStep: "failed"
+          upload: {
+            ...this.jobs[masterObjectId].upload,
+            runState: "failed"
+          }
         }
       });
       console.error("Failed to upload files for object: ", masterObjectId);
@@ -319,33 +329,58 @@ class IngestStore {
         upload: {
           ...this.jobs[masterObjectId].upload,
           complete: true,
+          runState: "finished"
         },
         currentStep: "ingest"
       }
     });
 
     // Bitcode method
-    const {logs, warnings, errors} = yield this.client.CallBitcodeMethod({
-      libraryId,
-      objectId: masterObjectId,
-      writeToken,
-      method: UrlJoin("media", "production_master", "init"),
-      body: {
-        access
-      },
-      constant: false
-    });
+    let logs;
+    let warnings;
+    let errors;
+    try {
+      const response = yield this.client.CallBitcodeMethod({
+        libraryId,
+        objectId: masterObjectId,
+        writeToken,
+        method: UrlJoin("media", "production_master", "init"),
+        body: {
+          access
+        },
+        constant: false
+      });
+      logs = response.logs;
+      warnings = response.warnings;
+      errors = response.errors;
 
-    if(errors) {
+      if(errors) {
+        this.UpdateIngestObject({
+          id: masterObjectId,
+          data: {
+            ...this.jobs[masterObjectId],
+            ingest: {
+              runState: "failed"
+            }
+          }
+        });
+        console.error("Failed to call media/production_master/init");
+        this.UpdateIngestErrors("errors", "Error: Unable to ingest selected media file.");
+        return;
+      }
+    } catch(error) {
       this.UpdateIngestObject({
         id: masterObjectId,
         data: {
           ...this.jobs[masterObjectId],
-          currentStep: "failed"
+          ingest: {
+            runState: "failed"
+          }
         }
       });
-      console.error("Failed to call media/production_master/init");
-      this.UpdateIngestErrors("errors", "Error: Unable to ingest selected media file.");
+
+      console.error(error);
+      console.error(`Failed to probe files for object: ${masterObjectId}`);
       return;
     }
 
@@ -425,10 +460,10 @@ class IngestStore {
       yield this.client.AddContentObjectGroupPermission({objectId:masterObjectId, groupAddress: accessGroupAddress, permission: "manage"});
     }
 
-    if(playbackEncryption !== "both") {
+    if(playbackEncryption !== "custom") {
       let abrProfileExclude;
 
-      if(playbackEncryption === "drm") {
+      if(playbackEncryption.includes("drm")) {
         abrProfileExclude = ABR.ProfileExcludeClear(abrProfile);
       } else if(playbackEncryption === "clear") {
         abrProfileExclude = ABR.ProfileExcludeDRM(abrProfile);
@@ -437,6 +472,16 @@ class IngestStore {
       if(abrProfileExclude.ok) {
         abrProfile = abrProfileExclude.result;
       } else {
+        this.UpdateIngestObject({
+          id: masterObjectId,
+          data: {
+            ...this.jobs[masterObjectId],
+            ingest: {
+              ...this.jobs[masterObjectId].ingest,
+              runState: "failed"
+            }
+          }
+        });
         console.error("ABR Profile has no relevant playout formats.", abrProfileExclude);
         this.UpdateIngestErrors("errors", "Error: ABR Profile has no relevant playout formats.");
         return;
@@ -483,6 +528,17 @@ class IngestStore {
         offeringKey
       });
     } catch(error) {
+      this.UpdateIngestObject({
+        id: masterObjectId,
+        data: {
+          ...this.jobs[masterObjectId],
+          ingest: {
+            ...this.jobs[masterObjectId].ingest,
+            runState: "failed"
+          }
+        }
+      });
+
       console.error(`Failed to create mezzanine object: ${masterObjectId}`);
       console.error(error);
     }
@@ -529,6 +585,17 @@ class IngestStore {
         const enhancedStatus = enhanceLROStatus(options, status);
 
         if(!enhancedStatus.ok) {
+          this.UpdateIngestObject({
+            id: masterObjectId,
+            data: {
+              ...this.jobs[masterObjectId],
+              ingest: {
+                ...this.jobs[masterObjectId].ingest,
+                runState: "failed"
+              }
+            }
+          });
+
           console.error("Error processing LRO status");
           this.UpdateIngestErrors("errors", "Error: Unable to transcode selected file.");
           clearInterval(statusIntervalId);
@@ -636,6 +703,17 @@ class IngestStore {
       });
 
       if(!production_master || !production_master.sources || !production_master.variants || !production_master.variants.default) {
+        this.UpdateIngestObject({
+          id: objectId,
+          data: {
+            ...this.jobs[objectId],
+            ingest: {
+              ...this.jobs[objectId].ingest,
+              runState: "failed"
+            }
+          }
+        });
+
         console.error("Unable to create ABR profile.");
         this.UpdateIngestErrors("errors", "Error: Unable to create ABR profile.");
         return;
@@ -648,6 +726,17 @@ class IngestStore {
       );
 
       if(!generatedProfile.ok) {
+        this.UpdateIngestObject({
+          id: objectId,
+          data: {
+            ...this.jobs[objectId],
+            ingest: {
+              ...this.jobs[objectId].ingest,
+              runState: "failed"
+            }
+          }
+        });
+
         console.error("Generated profile returned error.", generatedProfile);
         this.UpdateIngestErrors("errors", "Error: Unable to create ABR profile.");
         return;
@@ -658,6 +747,17 @@ class IngestStore {
         contentTypeId: abr.mez_content_type
       };
     } catch(error) {
+      this.UpdateIngestObject({
+        id: objectId,
+        data: {
+          ...this.jobs[objectId],
+          ingest: {
+            ...this.jobs[objectId].ingest,
+            runState: "failed"
+          }
+        }
+      });
+
       console.error(`Failed to create ABR ladder for object: ${objectId}`);
       console.error(error);
       this.UpdateIngestErrors("errors", "Error: Unable to create ABR profile.");
@@ -685,12 +785,24 @@ class IngestStore {
           ...this.jobs[masterObjectId],
           finalize: {
             complete: true,
+            runState: "finished",
             mezzanineHash: finalizeAbrResponse.hash,
             objectId: finalizeAbrResponse.id
           }
         }
       });
     } catch(error) {
+      this.UpdateIngestObject({
+        id: objectId,
+        data: {
+          ...this.jobs[objectId],
+          finalize: {
+            ...this.jobs[objectId].finalize,
+            runState: "failed"
+          }
+        }
+      });
+
       console.error("Unable to finalize mezzanine object");
       console.error(error);
       this.UpdateIngestErrors("errors", "Error: Unable to transcode selected file.");

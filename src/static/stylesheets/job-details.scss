@@ -19,8 +19,12 @@
 
     &__icon {
       height: 20px;
-      margin-left: auto;
       width: 20px;
+    }
+
+    &__icon,
+    &__failed-text {
+      margin-left: auto;
     }
 
     &__inline-link {
