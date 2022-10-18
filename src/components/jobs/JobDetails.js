@@ -51,6 +51,8 @@ const JobDetails = observer(() => {
       playbackEncryption
     });
 
+    if(!response) { return; }
+
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     await ingestStore.WaitForPublish({
@@ -76,10 +78,36 @@ const JobDetails = observer(() => {
 
   if(!ingestStore.job) { return <PageLoader />; }
 
+  const DisplayError = () => {
+    if(!ingestStore.jobs[jobId].error) { return null; }
+
+    const fallbackErrorMessage = "Unable to create media playable object.";
+
+    return (
+      <div className="job-details__error">
+        { ingestStore.jobs[jobId].errorMessage || fallbackErrorMessage }
+      </div>
+    );
+  };
+
   return (
     <div className="page-container">
-      <div className="page__header">Details for Ingest Job {jobId}</div>
+      <div className="page__header">Details for {ingestStore.jobs[jobId].formData.master.title || jobId}</div>
       <div className="job-details">
+        <div className="job-details__job-info">
+          <div>
+            <span className="job-details__job-info__label">Name:</span>
+            <span>{ ingestStore.jobs[jobId].formData.master.title || "" }</span>
+          </div>
+          <div>
+            <span className="job-details__job-info__label">ID:</span>
+            <span>{ jobId }</span>
+          </div>
+          <div>
+            <span className="job-details__job-info__label">Library ID:</span>
+            <span>{ ingestStore.jobs[jobId].formData.master.libraryId || "" }</span>
+          </div>
+        </div>
         <h1 className="job-details__section-header">Progress Details</h1>
 
         <div className="job-details__card">
@@ -180,6 +208,7 @@ const JobDetails = observer(() => {
               </div>
             </>
         }
+        { DisplayError() }
       </div>
     </div>
   );

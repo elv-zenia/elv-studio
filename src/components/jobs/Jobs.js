@@ -15,16 +15,20 @@ const Jobs = observer(() => {
       "ingest": "Ingesting",
       "finalize": "Finalizing"
     };
+
     if(job.finalize.runState === "finished") {
       return "Complete";
-    } else if(
-      job.upload.runState === "failed" ||
-      job.ingest.runState === "failed" ||
-      job.finalize.runState === "failed"
-    ) {
+    } else if(job.error) {
       return "Failed";
     } else {
-      return statusMap[job.currentStep];
+      let statusMessage = statusMap[job.currentStep];
+      if(job.currentStep === "upload") {
+        statusMessage = `${statusMessage} ${job.upload.percentage ? `${job.upload.percentage}%` : ""}`;
+      } else if(job.currentStep === "ingest") {
+        statusMessage = `${statusMessage} ${job.ingest.estimatedTimeLeft || ""}`;
+      }
+
+      return statusMessage;
     }
   };
 
@@ -49,7 +53,11 @@ const Jobs = observer(() => {
           headers={[
             {
               key: "jobs-header",
-              cells: [{label: "Object ID"}, {label: "Status"}]
+              cells: [
+                {label: "Name"},
+                {label: "Object ID"},
+                {label: "Status"}
+              ]
             }
           ]}
           rows={
@@ -57,6 +65,13 @@ const Jobs = observer(() => {
               {
                 id: jobId,
                 cells: [
+                  {
+                    label: (
+                      ingestStore.jobs[jobId].formData &&
+                      ingestStore.jobs[jobId].formData.master &&
+                      ingestStore.jobs[jobId].formData.master.title
+                    )
+                  },
                   {label: jobId},
                   {
                     label: JobStatus({job: ingestStore.jobs[jobId]})
