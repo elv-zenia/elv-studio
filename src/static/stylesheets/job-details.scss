@@ -22,6 +22,10 @@
       width: 20px;
     }
 
+    &__failed-text {
+      color: $red;
+    }
+
     &__icon,
     &__failed-text {
       margin-left: auto;
@@ -45,6 +49,19 @@
           width: 20px;
         }
       }
+    }
+  }
+
+  &__error {
+    color: $red;
+  }
+
+  &__job-info {
+    margin-bottom: 1rem;
+
+    &__label {
+      font-weight: 500;
+      padding-right: 0.5rem;
     }
   }
 }

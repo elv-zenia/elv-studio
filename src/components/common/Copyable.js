@@ -1,9 +1,8 @@
 import React, {useState} from "react";
-import * as Tooltip from "@radix-ui/react-tooltip";
 import {CopyText} from "Utils/Clipboard";
-import ImageIcon from "Components/common/ImageIcon";
 import CopyIcon from "Assets/icons/clipboard.svg";
 import CheckmarkIcon from "Assets/icons/check.svg";
+import Tooltip from "Components/common/Tooltip";
 
 export const Copyable = ({copy, children, className}) => {
   const [copied, setCopied] = useState(false);
@@ -11,30 +10,19 @@ export const Copyable = ({copy, children, className}) => {
   return (
     <span className={`copyable ${className || ""}`}>
       { children }
-      <Tooltip.Provider delayDuration={300}>
-        <Tooltip.Root open={copied}>
-          <Tooltip.Trigger asChild>
-            <button
-              type="button"
-              title="Copy to Clipboard"
-              onClick={() => {
-                CopyText(copy);
-                setCopied(true);
-                setTimeout(() => {
-                  setCopied(false);
-                }, 3000);
-              }}
-            >
-              <ImageIcon className="copyable__icon" icon={copied ? CheckmarkIcon : CopyIcon} />
-            </button>
-          </Tooltip.Trigger>
-          <Tooltip.Content side="top" sideOffset={8}>
-            <div className="copyable__tooltip-content">
-              Copied
-            </div>
-          </Tooltip.Content>
-        </Tooltip.Root>
-      </Tooltip.Provider>
+      <Tooltip
+        message="Copied"
+        open={copied}
+        icon={copied ? CheckmarkIcon : CopyIcon}
+        delayDuration={300}
+        onClick={() => {
+          CopyText(copy);
+          setCopied(true);
+          setTimeout(() => {
+            setCopied(false);
+          }, 3000);
+        }}
+      />
     </span>
   );
 };

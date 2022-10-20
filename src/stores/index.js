@@ -38,6 +38,20 @@ class RootStore {
       this.loaded = true;
     }
   });
+
+  WrapApiCall = flow(function * ({api}) {
+    let ok = false;
+    let returnVal = null;
+    let error = null;
+    try {
+      returnVal = yield api;
+      ok = true;
+    } catch(e) {
+      error = e;
+    }
+
+    return {ok, returnVal, error};
+  });
 }
 
 export const rootStore = new RootStore();
