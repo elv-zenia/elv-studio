@@ -125,7 +125,6 @@ class IngestStore {
     });
 
     console.error(errorMessage, error);
-    return;
   }
 
   LoadLibraries = flow(function * () {
@@ -193,26 +192,35 @@ class IngestStore {
         options: mezContentType ? { type: mezContentType } : {}
       })
     });
+    const createResponse = result.returnVal;
 
     if(result.ok) {
-      yield this.client.SetVisibility({
-        id: result.returnVal.id,
-        visibility: 0
+      const visibilityResult = yield rootStore.WrapApiCall({
+        api: this.client.SetVisibility({
+          id: result.returnVal.id,
+          visibility: 0
+        })
       });
 
-      this.UpdateIngestObject({
-        id: result.returnVal.id,
-        data: {
-          currentStep: "create",
-          formData,
-          create: {
-            complete: true,
-            runState: "finished"
+      if(visibilityResult.ok) {
+        formData.master.writeToken = createResponse.write_token;
+
+        this.UpdateIngestObject({
+          id: createResponse.id,
+          data: {
+            currentStep: "create",
+            formData,
+            create: {
+              complete: true,
+              runState: "finished"
+            }
           }
-        }
-      });
+        });
 
-      return result.returnVal;
+        return createResponse;
+      } else {
+        console.error("Unable to set visibility.", visibilityResult.error);
+      }
     } else {
       console.error("Failed to create content object.", result.error);
     }
@@ -251,7 +259,7 @@ class IngestStore {
         createKMSConk: true
       });
     } catch(error) {
-      this.HandleError({
+      return this.HandleError({
         step: "upload",
         errorMessage: "Unable to create encryption conk.",
         error,
@@ -322,7 +330,7 @@ class IngestStore {
         });
       }
     } catch(error) {
-      this.HandleError({
+      return this.HandleError({
         step: "upload",
         errorMessage: "Unable to upload files.",
         error,
@@ -363,57 +371,75 @@ class IngestStore {
       errors = response.errors;
 
       if(errors) {
-        this.HandleError({
+        return this.HandleError({
           step: "ingest",
-          errorMessage: "Unable to probe media files.",
+          errorMessage: "Unable to get media information from production master.",
           id: masterObjectId
         });
       }
     } catch(error) {
-      this.HandleError({
+      return this.HandleError({
         step: "ingest",
-        errorMessage: "Unable to probe media files.",
+        errorMessage: "Unable to get media information from production master.",
         error,
         id: masterObjectId
       });
     }
 
     // Check if audio and video streams
-    const streams = (yield this.client.ContentObjectMetadata({
-      libraryId,
-      objectId: masterObjectId,
-      writeToken,
-      metadataSubtree: UrlJoin("production_master", "variants", "default", "streams")
-    }));
+    try {
+      const streams = (yield this.client.ContentObjectMetadata({
+        libraryId,
+        objectId: masterObjectId,
+        writeToken,
+        metadataSubtree: UrlJoin("production_master", "variants", "default", "streams")
+      }));
 
-    this.UpdateIngestObject({
-      id: masterObjectId,
-      data: {
-        ...this.jobs[masterObjectId],
-        upload: {
-          ...this.jobs[masterObjectId].upload,
-          streams: Object.keys(streams || {})
+      this.UpdateIngestObject({
+        id: masterObjectId,
+        data: {
+          ...this.jobs[masterObjectId],
+          upload: {
+            ...this.jobs[masterObjectId].upload,
+            streams: Object.keys(streams || {})
+          }
         }
-      }
-    });
+      });
+    } catch(error) {
+      return this.HandleError({
+        step: "ingest",
+        errorMessage: "Unable to get streams from production master.",
+        error,
+        id: masterObjectId
+      });
+    }
 
     // Merge metadata
-    yield this.client.MergeMetadata({
-      libraryId,
-      objectId: masterObjectId,
-      writeToken,
-      metadata: {
-        public: {
-          name: `${title} [ingest: uploading] MASTER`,
-          description,
-          asset_metadata: {
-            display_title: `${title} [ingest: uploading] MASTER`
-          }
+    try {
+      yield this.client.MergeMetadata({
+        libraryId,
+        objectId: masterObjectId,
+        writeToken,
+        metadata: {
+          public: {
+            name: `${title} [ingest: uploading] MASTER`,
+            description,
+            asset_metadata: {
+              display_title: `${title} [ingest: uploading] MASTER`
+            }
+          },
+          reference: true,
+          elv_created_at: new Date().getTime()
         },
-        reference: true,
-        elv_created_at: new Date().getTime()
-      },
-    });
+      });
+    } catch(error) {
+      return this.HandleError({
+        step: "ingest",
+        errorMessage: "Unable to update metadata with uploading state.",
+        error,
+        id: masterObjectId
+      });
+    }
 
     // Create ABR Ladder
     let {abrProfile, contentTypeId} = yield this.CreateABRLadder({
@@ -424,34 +450,62 @@ class IngestStore {
     });
 
     // Update name to remove [ingest: uploading]
-    yield this.client.MergeMetadata({
-      libraryId,
-      objectId: masterObjectId,
-      writeToken,
-      metadata: {
-        public: {
-          name: `${title} MASTER`,
-          description,
-          asset_metadata: {
-            display_title: `${title} MASTER`
-          }
+    try {
+      yield this.client.MergeMetadata({
+        libraryId,
+        objectId: masterObjectId,
+        writeToken,
+        metadata: {
+          public: {
+            name: `${title} MASTER`,
+            description,
+            asset_metadata: {
+              display_title: `${title} MASTER`
+            }
+          },
+          reference: true,
+          elv_created_at: new Date().getTime()
         },
-        reference: true,
-        elv_created_at: new Date().getTime()
-      },
-    });
+      });
+    } catch(error) {
+      return this.HandleError({
+        step: "ingest",
+        errorMessage: "Unable to update metadata after uploading.",
+        error,
+        id: masterObjectId
+      });
+    }
 
     // Finalize object
-    const finalizeResponse = yield this.client.FinalizeContentObject({
-      libraryId,
-      objectId: masterObjectId,
-      writeToken,
-      commitMessage: "Create master object",
-      awaitCommitConfirmation: false
-    });
+    let finalizeResponse;
+    try {
+      finalizeResponse = yield this.client.FinalizeContentObject({
+        libraryId,
+        objectId: masterObjectId,
+        writeToken,
+        commitMessage: "Create master object",
+        awaitCommitConfirmation: false
+      });
+    } catch(error) {
+      return this.HandleError({
+        step: "ingest",
+        errorMessage: "Unable to finalize production master.",
+        error,
+        id: masterObjectId
+      });
+    }
 
     if(accessGroupAddress) {
-      yield this.client.AddContentObjectGroupPermission({objectId:masterObjectId, groupAddress: accessGroupAddress, permission: "manage"});
+      try {
+        yield this.client.AddContentObjectGroupPermission({objectId: masterObjectId, groupAddress: accessGroupAddress, permission: "manage"});
+      } catch(error) {
+        return this.HandleError({
+          step: "ingest",
+          errorMessage: `Unable to add group permission for group: ${accessGroupAddress}`,
+          error,
+          id: masterObjectId
+        });
+      }
     }
 
     if(playbackEncryption !== "custom") {
@@ -466,7 +520,7 @@ class IngestStore {
       if(abrProfileExclude.ok) {
         abrProfile = abrProfileExclude.result;
       } else {
-        this.HandleError({
+        return this.HandleError({
           step: "ingest",
           errorMessage: "ABR Profile has no relevant playout formats.",
           error: abrProfileExclude,
@@ -515,9 +569,9 @@ class IngestStore {
         offeringKey
       });
     } catch(error) {
-      this.HandleError({
+      return this.HandleError({
         step: "ingest",
-        errorMessage: "Unable to create Mezzanine object.",
+        errorMessage: "Unable to create mezzanine object.",
         error,
         id: masterObjectId
       });
@@ -530,11 +584,25 @@ class IngestStore {
       objectId
     });
 
-    const { writeToken, hash } = yield this.client.StartABRMezzanineJobs({
-      libraryId,
-      objectId,
-      access
-    });
+    let writeToken;
+    let hash;
+    try {
+      const response = yield this.client.StartABRMezzanineJobs({
+        libraryId,
+        objectId,
+        access
+      });
+
+      writeToken = response.writeToken;
+      hash = response.hash;
+    } catch(error) {
+      return this.HandleError({
+        step: "ingest",
+        errorMessage: "Unable to start ABR mezzanine jobs.",
+        error,
+        id: masterObjectId
+      });
+    }
 
     yield this.WaitForPublish({
       hash,
@@ -552,8 +620,11 @@ class IngestStore {
       });
 
       if(status === undefined) {
-        console.error("Received no job status information from server.");
-        return;
+        return this.HandleError({
+          step: "ingest",
+          errorMessage: "Received no job status information from server.",
+          id: masterObjectId
+        });
       }
 
       if(statusIntervalId) clearInterval(statusIntervalId);
@@ -565,14 +636,14 @@ class IngestStore {
         const enhancedStatus = enhanceLROStatus(options, status);
 
         if(!enhancedStatus.ok) {
-          this.HandleError({
+          clearInterval(statusIntervalId);
+          error = true;
+
+          return this.HandleError({
             step: "ingest",
             errorMessage: "Unable to transcode selected file.",
             id: masterObjectId
           });
-          clearInterval(statusIntervalId);
-          error = true;
-          return;
         }
 
         const {estimated_time_left_seconds, estimated_time_left_h_m_s, run_state} = enhancedStatus.result.summary;
@@ -616,30 +687,39 @@ class IngestStore {
             objectId: masterObjectId
           });
 
-          await this.client.MergeMetadata({
-            libraryId,
-            objectId,
-            writeToken,
-            metadata: {
-              public: {
-                name: `${name} MEZ`,
-                description,
-                asset_metadata: {
-                  display_title: `${name} MEZ`,
-                  nft: {
-                    name,
-                    display_name: displayName,
-                    description,
-                    created_at: new Date(),
-                    playable: true,
-                    has_audio: this.jobs[masterObjectId].upload.streams.includes("audio"),
-                    embed_url: embedUrl,
-                    external_url: embedUrl
+          try {
+            await this.client.MergeMetadata({
+              libraryId,
+              objectId,
+              writeToken,
+              metadata: {
+                public: {
+                  name: `${name} MEZ`,
+                  description,
+                  asset_metadata: {
+                    display_title: `${name} MEZ`,
+                    nft: {
+                      name,
+                      display_name: displayName,
+                      description,
+                      created_at: new Date(),
+                      playable: true,
+                      has_audio: this.jobs[masterObjectId].upload.streams.includes("audio"),
+                      embed_url: embedUrl,
+                      external_url: embedUrl
+                    }
                   }
                 }
               }
-            }
-          });
+            });
+          } catch(error) {
+            return this.HandleError({
+              step: "ingest",
+              errorMessage: "Unable to update metadata with NFT details.",
+              error,
+              id: masterObjectId
+            });
+          }
 
           this.FinalizeABRMezzanine({
             libraryId,
@@ -648,7 +728,16 @@ class IngestStore {
           });
 
           if(accessGroupAddress) {
-            await this.client.AddContentObjectGroupPermission({objectId, groupAddress: accessGroupAddress, permission: "manage"});
+            try {
+              await this.client.AddContentObjectGroupPermission({objectId, groupAddress: accessGroupAddress, permission: "manage"});
+            } catch(error) {
+              return this.HandleError({
+                step: "ingest",
+                errorMessage: `Unable to add group permission for group: ${accessGroupAddress}`,
+                error,
+                id: masterObjectId
+              });
+            }
           }
         }
       }, 1000);
@@ -675,7 +764,7 @@ class IngestStore {
       });
 
       if(!production_master || !production_master.sources || !production_master.variants || !production_master.variants.default) {
-        this.HandleError({
+        return this.HandleError({
           step: "ingest",
           errorMessage: "Unable to create ABR profile.",
           id: objectId
@@ -689,7 +778,7 @@ class IngestStore {
       );
 
       if(!generatedProfile.ok) {
-        this.HandleError({
+        return this.HandleError({
           step: "ingest",
           errorMessage: "Unable to create ABR profile.",
           error: generatedProfile,
@@ -702,7 +791,7 @@ class IngestStore {
         contentTypeId: abr.mez_content_type
       };
     } catch(error) {
-      this.HandleError({
+      return this.HandleError({
         step: "ingest",
         errorMessage: "Unable to create ABR profile.",
         error,
@@ -739,7 +828,7 @@ class IngestStore {
         }
       });
     } catch(error) {
-      this.HandleError({
+      return this.HandleError({
         step: "finalize",
         errorMessage: "Unable to finalize mezzanine object.",
         error,
