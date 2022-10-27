@@ -65,6 +65,17 @@ class IngestStore {
     this.UpdateIngestJobs({jobs: this.jobs});
   }
 
+  RemoveJob = ({id}) => {
+    if(this.jobs[id]) {
+      delete this.jobs[id];
+      localStorage.setItem(
+        "elv-jobs",
+        btoa(JSON.stringify(this.jobs))
+      );
+      this.UpdateIngestJobs({jobs: this.jobs});
+    }
+  }
+
   ClearJobs = () => {
     this.jobs = {};
     localStorage.removeItem("elv-jobs");

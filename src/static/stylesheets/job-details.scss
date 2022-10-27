@@ -64,4 +64,12 @@
       padding-right: 0.5rem;
     }
   }
+
+  &__footer-actions {
+    margin: 32px 0 40px;
+
+    button:last-child:not(:first-child) {
+      margin-left: 10px;
+    }
+  }
 }

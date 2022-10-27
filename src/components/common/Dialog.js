@@ -1,7 +1,16 @@
 import React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 
-const Dialog = ({trigger, title, description, ConfirmCallback}) => {
+const Dialog = ({
+  trigger,
+  title,
+  description,
+  ConfirmCallback,
+  open,
+  onOpenChange,
+  confirmText="Confirm",
+  cancelText="Cancel"
+}) => {
   const Dialog = DialogPrimitive.Root;
   const DialogTrigger = DialogPrimitive.Trigger;
   const DialogOverlay = DialogPrimitive.Overlay;
@@ -12,21 +21,21 @@ const Dialog = ({trigger, title, description, ConfirmCallback}) => {
 
   return (
     <div className="dialog">
-      <Dialog>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogTrigger asChild>{ trigger }</DialogTrigger>
         <DialogOverlay className="dialog__overlay">
           <DialogContent className="dialog__content">
-            <DialogTitle>{ title }</DialogTitle>
-            <DialogDescription>{ description }</DialogDescription>
+            <DialogTitle className="dialog__content__title">{ title }</DialogTitle>
+            <DialogDescription className="dialog__content__description">{ description }</DialogDescription>
             <div className="dialog__actions">
               <DialogClose asChild>
                 <button type="button" className="secondary-button">
-                  Cancel
+                  { cancelText }
                 </button>
               </DialogClose>
               <DialogClose asChild>
                 <button type="button" className="primary-button" onClick={ConfirmCallback}>
-                  Confirm
+                  { confirmText }
                 </button>
               </DialogClose>
             </div>

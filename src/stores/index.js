@@ -1,5 +1,6 @@
 import {configure, flow, makeObservable, observable} from "mobx";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
+import {ElvWalletClient} from "@eluvio/elv-client-js";
 import IngestStore from "Stores/IngestStore";
 
 // Force strict mode so mutations are only allowed within actions.
@@ -10,11 +11,13 @@ configure({
 class RootStore {
   loaded = false;
   client;
+  walletClient;
   networkInfo;
 
   constructor() {
     makeObservable(this, {
       client: observable,
+      walletClient: observable,
       loaded: observable,
       networkInfo: observable
     });
@@ -31,6 +34,17 @@ class RootStore {
       });
 
       this.networkInfo = yield this.client.NetworkInfo();
+
+      this.walletClient = yield ElvWalletClient.Initialize({
+        network: EluvioConfiguration.network,
+        mode: EluvioConfiguration.mode
+      });
+      // this.walletClient.SetProfileMetadata({
+      //   type: "user",
+      //   mode: "private",
+      //   key: "ingest-jobs",
+      //   value: JSON.stringify({"test": "abc"})
+      // });
     } catch(error) {
       console.error("Failed to initialize application");
       console.error(error);

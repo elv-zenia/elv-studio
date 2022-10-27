@@ -11,6 +11,16 @@
     top: 50%;
     transform: translate(-50%, -50%);
     width: 90vw;
+
+    &__title {
+      font-size: 17px;
+      font-weight: 500;
+    }
+
+    &__description {
+      line-height: 1.5;
+      margin: 10px 0 20px;
+    }
   }
 
   &__overlay {
