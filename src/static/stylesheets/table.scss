@@ -1,6 +1,6 @@
 .table {
   display: table;
-  width: 1200px;
+  min-width: 1000px;
 
   &__head {
     display: table-header-group;

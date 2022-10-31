@@ -1,9 +1,11 @@
 import {flow, makeAutoObservable} from "mobx";
-import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
-import {FileInfo} from "Utils/Files";
 import Path from "path";
+
+import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
+import {FileInfo} from "Utils/Files";
 import {rootStore} from "./index";
+
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
 const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
@@ -25,6 +27,10 @@ class IngestStore {
     return this.rootStore.client;
   }
 
+  get database() {
+    return this.rootStore.fileStore.database;
+  }
+
   get libraries() {
     return this.libraries;
   }
@@ -33,7 +39,7 @@ class IngestStore {
     return this.libraries[libraryId];
   }
 
-  SetJob(jobId) {
+  SetJob = (jobId) => {
     this.job = this.jobs[jobId];
   }
 
@@ -68,6 +74,8 @@ class IngestStore {
   RemoveJob = ({id}) => {
     if(this.jobs[id]) {
       delete this.jobs[id];
+      rootStore.fileStore.RemoveFile({jobId: id});
+
       localStorage.setItem(
         "elv-jobs",
         btoa(JSON.stringify(this.jobs))
@@ -78,6 +86,7 @@ class IngestStore {
 
   ClearJobs = () => {
     this.jobs = {};
+    rootStore.fileStore.ClearAllFiles();
     localStorage.removeItem("elv-jobs");
   }
 
@@ -838,6 +847,8 @@ class IngestStore {
           }
         }
       });
+
+      rootStore.fileStore.RemoveFile({jobId: masterObjectId});
     } catch(error) {
       return this.HandleError({
         step: "finalize",

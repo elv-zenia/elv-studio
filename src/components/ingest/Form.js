@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
 import {observer} from "mobx-react";
 
-import {ingestStore} from "Stores";
+import {fileStore, ingestStore} from "Stores";
 import Dropzone from "Components/common/Dropzone";
 import FabricLoader from "Components/FabricLoader";
 import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components/common/Inputs";
@@ -268,6 +268,15 @@ const Form = observer(() => {
           }
         }
       });
+
+      if(uploadMethod === "local") {
+        fileStore.PersistFile({
+          file: {
+            jobId: createResponse.id,
+            file: files[0]
+          }
+        });
+      }
 
       setMasterObjectId(createResponse.id);
     } finally {

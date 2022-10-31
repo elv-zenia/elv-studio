@@ -21,6 +21,8 @@
     "@eluvio/elv-lro-status": "^3.0.3",
     "@radix-ui/react-dialog": "^1.0.0",
     "@radix-ui/react-tooltip": "^1.0.0",
+    "dexie": "^3.2.2",
+    "dexie-react-hooks": "^1.1.1",
     "mobx": "^6.6.0",
     "mobx-react": "^7.5.0",
     "react": "17.0.2",
