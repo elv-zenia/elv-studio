@@ -1,6 +1,5 @@
 import {configure, flow, makeObservable, observable} from "mobx";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
-import {ElvWalletClient} from "@eluvio/elv-client-js";
 import IngestStore from "Stores/IngestStore";
 import FileStore from "Stores/FileStore";
 
@@ -36,17 +35,6 @@ class RootStore {
       });
 
       this.networkInfo = yield this.client.NetworkInfo();
-
-      this.walletClient = yield ElvWalletClient.Initialize({
-        network: EluvioConfiguration.network,
-        mode: EluvioConfiguration.mode
-      });
-      // this.walletClient.SetProfileMetadata({
-      //   type: "user",
-      //   mode: "private",
-      //   key: "ingest-jobs",
-      //   value: JSON.stringify({"test": "abc"})
-      // });
     } catch(error) {
       console.error("Failed to initialize application");
       console.error(error);
