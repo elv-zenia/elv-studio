@@ -134,7 +134,7 @@ const Form = observer(() => {
         }
         defaultOption={{
           value: "",
-          label: "Select library"
+          label: "Select Library"
         }}
         onChange={event => setMezLibrary(event.target.value)}
         value={mezLibrary}
@@ -142,7 +142,7 @@ const Form = observer(() => {
 
       <Select
         label="Access Group"
-        labelDescription="This is the Access Group you want to manage your master object."
+        labelDescription="This is the Access Group that will manage your mezzanine object."
         formName="mezGroup"
         required={false}
         options={
@@ -341,7 +341,7 @@ const Form = observer(() => {
                 }
                 defaultOption={{
                   value: "",
-                  label: "Select region"
+                  label: "Select Region"
                 }}
                 onChange={event => setS3Region(event.target.value)}
                 required={s3UseAKSecret}
@@ -417,7 +417,7 @@ const Form = observer(() => {
 
           <Select
             label="Access Group"
-            labelDescription="This is the Access Group you want to manage your master object."
+            labelDescription="This is the Access Group that will manage your master object."
             formName="masterGroup"
             required={false}
             options={
@@ -450,7 +450,7 @@ const Form = observer(() => {
             }
             defaultOption={{
               value: "",
-              label: "Select library"
+              label: "Select Library"
             }}
             onChange={event => setMasterLibrary(event.target.value)}
           />
@@ -483,7 +483,7 @@ const Form = observer(() => {
             ]}
             defaultOption={{
               value: "",
-              label: "Select encryption"
+              label: "Select Encryption"
             }}
             value={playbackEncryption}
             onChange={event => setPlaybackEncryption(event.target.value)}
