@@ -7,6 +7,7 @@ import FabricLoader from "Components/FabricLoader";
 import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components/common/Inputs";
 import {Redirect} from "react-router-dom";
 import {abrProfileClear, abrProfileDrm, abrProfileRestrictedDrm, s3Regions} from "Utils";
+import PrettyBytes from "pretty-bytes";
 
 const Form = observer(() => {
   const [isCreating, setIsCreating] = useState(false);
@@ -311,7 +312,10 @@ const Form = observer(() => {
                 <div className="file-names">
                   {
                     files.map((file, index) => (
-                      <div key={`${file.name || file.path}-${index}`}>{file.name || file.path}</div>
+                      <div key={`${file.name || file.path}-${index}`}>
+                        <span>{file.name || file.path}</span>
+                        <span> - {PrettyBytes(file.size || 0)}</span>
+                      </div>
                     ))
                   }
                 </div>
