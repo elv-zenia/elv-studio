@@ -328,6 +328,24 @@ class IngestStore {
           callback: UploadCallback,
           encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
         });
+
+        const filesMetadata = yield this.client.ContentObjectMetadata({
+          libraryId,
+          objectId: masterObjectId,
+          writeToken,
+          metadataSubtree: `/files/${fileInfo[0].path}`
+        });
+
+        this.UpdateIngestObject({
+          id: masterObjectId,
+          data: {
+            ...this.jobs[masterObjectId],
+            upload: {
+              ...this.jobs[masterObjectId].upload,
+              size: (filesMetadata && filesMetadata["."]) ? filesMetadata["."].size : ""
+            }
+          }
+        });
       }
     } catch(error) {
       return this.HandleError({

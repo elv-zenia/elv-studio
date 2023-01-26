@@ -1,6 +1,7 @@
 import React, {useEffect} from "react";
 import {useRouteMatch} from "react-router-dom";
 import {observer} from "mobx-react";
+import PrettyBytes from "pretty-bytes";
 
 import {ingestStore} from "Stores";
 import ImageIcon from "Components/common/ImageIcon";
@@ -99,15 +100,26 @@ const JobDetails = observer(() => {
             <span className="job-details__job-info__label">Name:</span>
             <span>{ ingestStore.jobs[jobId].formData.master.title || "" }</span>
           </div>
+
+          {
+            ingestStore.jobs[jobId].upload.size &&
+            <div>
+              <span className="job-details__job-info__label">File Size:</span>
+              <span>{ PrettyBytes(ingestStore.jobs[jobId].upload.size || 0) }</span>
+            </div>
+          }
+
           <div>
             <span className="job-details__job-info__label">ID:</span>
             <span>{ jobId }</span>
           </div>
+
           <div>
             <span className="job-details__job-info__label">Library ID:</span>
             <span>{ ingestStore.jobs[jobId].formData.master.libraryId || "" }</span>
           </div>
         </div>
+
         <h1 className="job-details__section-header">Progress Details</h1>
 
         <div className="job-details__card">
