@@ -79,11 +79,34 @@
     }
   }
 
-  .file-names {
+  .file-list {
     margin-bottom: 2rem;
+    margin-top: 0.5rem;
+
+    &__item {
+      align-items: center;
+      background-color: $gray2;
+      display: flex;
+      flex-direction: row;
+      margin-bottom: 0.875rem;
+      padding: 1rem;
+
+      &__close-button {
+        margin-left: auto;
+
+        &__icon {
+          height: 17px;
+          width: 17px;
+        }
+      }
+    }
   }
 
   &__radio-container {
     margin-bottom: 1rem;
   }
+}
+
+.form-notification {
+  max-width: 700px;
 }
