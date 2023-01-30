@@ -187,8 +187,8 @@ const Form = observer(() => {
       !masterName ||
       !playbackEncryption ||
       playbackEncryption === "custom" && !abrProfile ||
-      !errorMessage ||
-      !errorTitle
+      errorMessage ||
+      errorTitle
     ) {
       return false;
     }
@@ -352,7 +352,7 @@ const Form = observer(() => {
             uploadMethod === "local" &&
               <>
                 { dropzone }
-                <label>{ files.length === 1 ? "File:" : "Files:" }</label>
+                <label>Files:</label>
                 <div className="file-list">
                   {
                     files.map((file, index) => (
