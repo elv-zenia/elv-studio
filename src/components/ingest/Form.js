@@ -8,9 +8,14 @@ import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components
 import {Redirect} from "react-router-dom";
 import {abrProfileClear, abrProfileDrm, abrProfileRestrictedDrm, s3Regions} from "Utils";
 import PrettyBytes from "pretty-bytes";
+import InlineNotification from "Components/common/InlineNotification";
+import ImageIcon from "Components/common/ImageIcon";
+import CloseIcon from "Assets/icons/close";
 
 const Form = observer(() => {
   const [isCreating, setIsCreating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("message");
+  const [errorTitle, setErrorTitle] = useState("title");
   const [masterObjectId, setMasterObjectId] = useState();
   const [uploadMethod, setUploadMethod] = useState("local");
   const [files, setFiles] = useState([]);
@@ -81,6 +86,18 @@ const Form = observer(() => {
     id: "main-dropzone",
     onDrop: files => setFiles(files)
   });
+
+  useEffect(() => {
+    const hasSizeableFiles = files.some(file => file.size > 0);
+
+    if(!hasSizeableFiles && files.length > 0) {
+      setErrorTitle(`Empty ${files.length === 1 ? "File" : "Files"}.`);
+      setErrorMessage(`${files.length === 1 ? "This file contains" : "These files contain"} no data.`);
+    } else {
+      setErrorTitle("");
+      setErrorMessage("");
+    }
+  }, [files]);
 
   useEffect(() => {
     const SetProfile = (abr) => {
@@ -169,7 +186,9 @@ const Form = observer(() => {
       !masterLibrary ||
       !masterName ||
       !playbackEncryption ||
-      playbackEncryption === "custom" && !abrProfile
+      playbackEncryption === "custom" && !abrProfile ||
+      errorMessage ||
+      errorTitle
     ) {
       return false;
     }
@@ -276,12 +295,37 @@ const Form = observer(() => {
     }
   };
 
+  const ErrorMessaging = () => {
+    if(!errorTitle && !errorMessage) { return null; }
+
+    return (
+      <div className="form-notification">
+        <InlineNotification
+          type="error"
+          title={errorTitle}
+          message={errorMessage}
+        />
+      </div>
+    );
+  };
+
+  const HandleRemove = ({index}) => {
+    const newFiles = files
+      .slice(0, index)
+      .concat(files.slice(index + 1));
+
+    setFiles(newFiles);
+  };
+
   if(masterObjectId) { return <Redirect to={`jobs/${masterObjectId}`} />; }
 
   return (
     <FabricLoader>
       <div className="page-container">
         <div className="page__header">Ingest New Media</div>
+
+        { ErrorMessaging() }
+
         <form className="form" onSubmit={HandleSubmit}>
           <Radio
             label="Upload Method:"
@@ -308,13 +352,22 @@ const Form = observer(() => {
             uploadMethod === "local" &&
               <>
                 { dropzone }
-                <label>{ files.length === 1 ? "File:" : "Files:" }</label>
-                <div className="file-names">
+                <label>Files:</label>
+                <div className="file-list">
                   {
                     files.map((file, index) => (
-                      <div key={`${file.name || file.path}-${index}`}>
+                      <div className="file-list__item" key={`${file.name || file.path}-${index}`}>
                         <span>{file.name || file.path}</span>
-                        <span> - {PrettyBytes(file.size || 0)}</span>
+                        <span>&nbsp;- {PrettyBytes(file.size || 0)}</span>
+                        <button
+                          type="button"
+                          title="Remove file"
+                          aria-label="Remove file"
+                          onClick={() => HandleRemove({index})}
+                          className="file-list__item__close-button"
+                        >
+                          <ImageIcon className="file-list__item__close-button__icon" icon={CloseIcon} />
+                        </button>
                       </div>
                     ))
                   }
