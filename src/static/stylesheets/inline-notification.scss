@@ -1,0 +1,40 @@
+.inline-notification {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+
+  &--error {
+    background-color: rgba($red, 0.15);
+    border: 1px solid $red;
+    border-left: 4px solid $red;
+  }
+
+  &--warning {
+    background-color: rgba($yellow, 0.15);
+    border: 1px solid $yellow;
+    border-left: 4px solid $yellow;
+  }
+
+  &--info {
+    background-color: rgba($blue, 0.15);
+    border: 1px solid $blue;
+    border-left: 4px solid $blue;
+  }
+
+  &__title {
+    font-weight: 700;
+    padding-right: 0.5rem;
+  }
+
+  &__close-button {
+    margin-left: auto;
+
+    &__icon {
+      height: 17px;
+      width: 17px;
+    }
+  }
+}
