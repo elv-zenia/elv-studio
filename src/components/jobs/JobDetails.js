@@ -9,6 +9,7 @@ import {PageLoader} from "Components/common/Loader";
 import {Copyable} from "Components/common/Copyable";
 import CheckmarkIcon from "Assets/icons/check.svg";
 import LoadingIcon from "Assets/icons/loading.gif";
+import InlineNotification from "Components/common/InlineNotification";
 
 const JobDetails = observer(() => {
   const match = useRouteMatch();
@@ -43,13 +44,14 @@ const JobDetails = observer(() => {
       title,
       description,
       s3Url,
-      abr: JSON.parse(abr),
+      abr: abr ? JSON.parse(abr) : undefined,
       accessGroupAddress: accessGroup,
       access: JSON.parse(access),
       copy,
       masterObjectId: jobId,
       writeToken,
-      playbackEncryption
+      playbackEncryption,
+      mezContentType: ingestStore.job.mezContentType
     });
 
     if(!response) { return; }
@@ -86,7 +88,11 @@ const JobDetails = observer(() => {
 
     return (
       <div className="job-details__error">
-        { ingestStore.jobs[jobId].errorMessage || fallbackErrorMessage }
+        <InlineNotification
+          type="error"
+          message={ingestStore.jobs[jobId].errorMessage || fallbackErrorMessage}
+          hideCloseButton={true}
+        />
       </div>
     );
   };

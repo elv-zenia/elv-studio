@@ -34,17 +34,17 @@ const Jobs = observer(() => {
 
   return (
     <div className="page-container">
-      <div className="page__header">Active Ingest Jobs</div>
+      <div className="page__header">Ingest Jobs</div>
       <div className="jobs">
         <Dialog
           title="Clear Jobs"
-          description="Are you sure you want to clear all jobs? This action cannot be undone."
+          description="Are you sure you want to clear all inactive jobs? This action cannot be undone."
           trigger={(
             <button
               className="primary-button jobs__button"
               type="button"
             >
-              Clear All Jobs
+              Clear Inactive Jobs
             </button>
           )}
           ConfirmCallback={ingestStore.ClearJobs}
@@ -64,6 +64,7 @@ const Jobs = observer(() => {
             Object.keys(ingestStore.jobs).map(jobId => (
               {
                 id: jobId,
+                link: `/jobs/${jobId}`,
                 cells: [
                   {
                     label: (

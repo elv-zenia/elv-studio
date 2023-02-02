@@ -101,6 +101,7 @@ input[type="submit"] {
   cursor: pointer;
   min-height: 35px;
   min-width: 7.5rem;
+  padding: 3px 10px;
 
   &:disabled {
     cursor: not-allowed;

@@ -4,6 +4,7 @@ import UrlJoin from "url-join";
 import {FileInfo} from "Utils/Files";
 import Path from "path";
 import {rootStore} from "./index";
+import {DrmWidevineFairplayProfile} from "Utils/ABR";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
 const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
@@ -57,10 +58,27 @@ class IngestStore {
       this.jobs[id],
       data
     );
-    localStorage.setItem(
-      "elv-jobs",
-      btoa(JSON.stringify(this.jobs))
-    );
+
+    try {
+      localStorage.setItem(
+        "elv-jobs",
+        btoa(JSON.stringify(this.jobs))
+      );
+    } catch(error) {
+      let errorMessage;
+      if(error instanceof DOMException && error.code === 22) {
+        errorMessage = "Storage quota exceeded. Please clear jobs to free up space.";
+      } else {
+        errorMessage = "Unable to store job data.";
+      }
+
+      return this.HandleError({
+        step: "upload",
+        errorMessage,
+        error,
+        id
+      });
+    }
 
     this.UpdateIngestJobs({jobs: this.jobs});
   }
@@ -232,13 +250,14 @@ class IngestStore {
     title,
     abr,
     accessGroupAddress,
-    playbackEncryption="both",
+    playbackEncryption="clear",
     description,
     s3Url,
     access=[],
     copy,
     masterObjectId,
-    writeToken
+    writeToken,
+    mezContentType
   }) {
     ValidateLibrary(libraryId);
 
@@ -315,7 +334,7 @@ class IngestStore {
           secret,
           signedUrl,
           copy,
-          encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
+          encryption: playbackEncryption.includes("drm") ? "cgck" : "none"
         });
       } else {
         const fileInfo = yield FileInfo("", files);
@@ -326,7 +345,7 @@ class IngestStore {
           writeToken,
           fileInfo,
           callback: UploadCallback,
-          encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
+          encryption: playbackEncryption.includes("drm") ? "cgck" : "none"
         });
 
         const filesMetadata = yield this.client.ContentObjectMetadata({
@@ -404,7 +423,7 @@ class IngestStore {
       });
     }
 
-    // Check if audio and video streams
+    // Check for audio and video streams
     try {
       const streams = (yield this.client.ContentObjectMetadata({
         libraryId,
@@ -417,9 +436,9 @@ class IngestStore {
         id: masterObjectId,
         data: {
           ...this.jobs[masterObjectId],
-          upload: {
-            ...this.jobs[masterObjectId].upload,
-            streams: Object.keys(streams || {})
+          streams: {
+            audio: !!streams.audio,
+            video: !!streams.video
           }
         }
       });
@@ -464,7 +483,8 @@ class IngestStore {
       libraryId,
       objectId: masterObjectId,
       writeToken,
-      abr
+      abr,
+      mezContentType
     });
 
     // Update name to remove [ingest: uploading]
@@ -529,8 +549,10 @@ class IngestStore {
     if(playbackEncryption !== "custom") {
       let abrProfileExclude;
 
-      if(playbackEncryption.includes("drm")) {
+      if(playbackEncryption === "drm") {
         abrProfileExclude = ABR.ProfileExcludeClear(abrProfile);
+      } else if(playbackEncryption === "drm-restricted") {
+        abrProfileExclude = DrmWidevineFairplayProfile({abrProfile});
       } else if(playbackEncryption === "clear") {
         abrProfileExclude = ABR.ProfileExcludeDRM(abrProfile);
       }
@@ -722,7 +744,7 @@ class IngestStore {
                       description,
                       created_at: new Date(),
                       playable: true,
-                      has_audio: this.jobs[masterObjectId].upload.streams.includes("audio"),
+                      has_audio: this.jobs[masterObjectId].streams.audio,
                       embed_url: embedUrl,
                       external_url: embedUrl
                     }
@@ -768,7 +790,8 @@ class IngestStore {
     libraryId,
     objectId,
     writeToken,
-    abr
+    abr,
+    mezContentType
   }) {
     try {
       const {production_master} = yield this.client.ContentObjectMetadata({
@@ -792,7 +815,7 @@ class IngestStore {
       const generatedProfile = ABR.ABRProfileForVariant(
         production_master.sources,
         production_master.variants.default,
-        abr.default_profile
+        abr ? abr.default_profile : undefined
       );
 
       if(!generatedProfile.ok) {
@@ -806,7 +829,7 @@ class IngestStore {
 
       return {
         abrProfile: generatedProfile.result,
-        contentTypeId: abr.mez_content_type
+        contentTypeId: mezContentType
       };
     } catch(error) {
       return this.HandleError({

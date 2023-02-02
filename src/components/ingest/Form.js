@@ -6,7 +6,7 @@ import Dropzone from "Components/common/Dropzone";
 import FabricLoader from "Components/FabricLoader";
 import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components/common/Inputs";
 import {Redirect} from "react-router-dom";
-import {abrProfileClear, abrProfileDrm, abrProfileRestrictedDrm, s3Regions} from "Utils";
+import {s3Regions} from "Utils";
 import PrettyBytes from "pretty-bytes";
 import InlineNotification from "Components/common/InlineNotification";
 import ImageIcon from "Components/common/ImageIcon";
@@ -100,24 +100,9 @@ const Form = observer(() => {
   }, [files]);
 
   useEffect(() => {
-    const SetProfile = (abr) => {
-      const profile = JSON.stringify({default_profile: abr}, null, 2);
+    if(playbackEncryption === "custom") {
+      const profile = JSON.stringify({default_profile: {}}, null, 2);
       setAbrProfile(profile);
-    };
-
-    switch(playbackEncryption) {
-      case "drm-restricted":
-        SetProfile(abrProfileRestrictedDrm);
-        break;
-      case "drm":
-        SetProfile(abrProfileDrm);
-        break;
-      case "clear":
-        SetProfile(abrProfileClear);
-        break;
-      case "custom":
-      default:
-        break;
     }
   }, [playbackEncryption]);
 
@@ -213,6 +198,42 @@ const Form = observer(() => {
     return true;
   };
 
+  const S3Access = () => {
+    let cloudCredentials;
+    let bucket;
+    if(s3UseAKSecret && s3Url) {
+      const s3PrefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+      const s3PrefixMatch = (s3PrefixRegex.exec(s3Url));
+
+      bucket = s3PrefixMatch[1];
+      cloudCredentials = {
+        access_key_id: s3AccessKey,
+        secret_access_key: s3Secret
+      };
+    } else if(s3PresignedUrl) {
+      const httpsPrefixRegex = /^https:\/\/([^/]+)\//i;
+      const httpsPrefixMatch = (httpsPrefixRegex.exec(s3PresignedUrl));
+      bucket = httpsPrefixMatch[1].split(".")[0];
+
+      cloudCredentials = {
+        signed_url: s3PresignedUrl
+      };
+    }
+
+    return [{
+      path_matchers: [".*"],
+      remote_access: {
+        protocol: "s3",
+        platform: "aws",
+        path: `${bucket}/`,
+        storage_endpoint: {
+          region: s3Region
+        },
+        cloud_credentials: cloudCredentials
+      }
+    }];
+  };
+
   const HandleSubmit = async (event) => {
     event.preventDefault();
     setIsCreating(true);
@@ -220,54 +241,17 @@ const Form = observer(() => {
     let access = [];
     try {
       if(uploadMethod === "s3") {
-        let cloudCredentials;
-        let bucket;
-        if(s3UseAKSecret && s3Url) {
-          const s3PrefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
-          const s3PrefixMatch = (s3PrefixRegex.exec(s3Url));
-
-          bucket = s3PrefixMatch[1];
-          cloudCredentials = {
-            access_key_id: s3AccessKey,
-            secret_access_key: s3Secret
-          };
-        } else if(s3PresignedUrl) {
-          const httpsPrefixRegex = /^https:\/\/([^/]+)\//i;
-          const httpsPrefixMatch = (httpsPrefixRegex.exec(s3PresignedUrl));
-          bucket = httpsPrefixMatch[1].split(".")[0];
-
-          cloudCredentials = {
-            signed_url: s3PresignedUrl
-          };
-        }
-
-        access = [{
-          path_matchers: [".*"],
-          remote_access: {
-            protocol: "s3",
-            platform: "aws",
-            path: `${bucket}/`,
-            storage_endpoint: {
-              region: s3Region
-            },
-            cloud_credentials: cloudCredentials
-          }
-        }];
+        access = S3Access();
       }
 
       let accessGroup = ingestStore.accessGroups[masterGroup] ? ingestStore.accessGroups[masterGroup].address : undefined;
       let mezAccessGroupAddress = useMasterAsMez? accessGroup : ingestStore.accessGroups[mezGroup] ? ingestStore.accessGroups[mezGroup].address : undefined;
-      const abrMetadata = JSON.stringify({
-        ...JSON.parse(abrProfile),
-        mez_content_type: mezContentType
-      }, null, 2);
 
-      const createResponse = await ingestStore.CreateContentObject({
+      let createParams = {
         libraryId: masterLibrary,
-        mezContentType: mezContentType || JSON.parse(abrMetadata).mez_content_type,
+        mezContentType: mezContentType,
         formData: {
           master: {
-            abr: abrMetadata,
             libraryId: masterLibrary,
             accessGroup,
             files: uploadMethod === "local" ? files : undefined,
@@ -287,7 +271,19 @@ const Form = observer(() => {
             newObject: !useMasterAsMez
           }
         }
-      });
+      };
+
+      if(playbackEncryption === "custom") {
+        const abrMetadata = JSON.stringify({
+          ...JSON.parse(abrProfile),
+          mez_content_type: mezContentType
+        }, null, 2);
+
+        createParams.formData.master["abr"] = abrMetadata;
+        createParams.mezContentType = JSON.parse(abrMetadata).mez_content_type;
+      }
+
+      const createResponse = await ingestStore.CreateContentObject(createParams);
 
       setMasterObjectId(createResponse.id);
     } finally {

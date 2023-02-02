@@ -5,7 +5,7 @@ const LeftNavigation = () => {
   return (
     <nav className="navigation">
       <NavLink to={"/new"} className="navigation__link">Create</NavLink>
-      <NavLink to={"/jobs"} className="navigation__link">Active Jobs</NavLink>
+      <NavLink to={"/jobs"} className="navigation__link">Jobs</NavLink>
     </nav>
   );
 };
