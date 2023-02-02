@@ -109,10 +109,10 @@ const JobDetails = observer(() => {
           </div>
 
           {
-            ingestStore.jobs[jobId].upload.size &&
+            ingestStore.jobs[jobId].size &&
             <div>
-              <span className="job-details__job-info__label">File Size:</span>
-              <span>{ PrettyBytes(ingestStore.jobs[jobId].upload.size || 0) }</span>
+              <span className="job-details__job-info__label">Total File Size:</span>
+              <span>{ PrettyBytes(ingestStore.jobs[jobId].size || 0) }</span>
             </div>
           }
 

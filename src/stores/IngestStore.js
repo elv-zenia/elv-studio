@@ -212,6 +212,8 @@ class IngestStore {
       })
     });
     const createResponse = result.returnVal;
+    let totalFileSize = 0;
+    formData.master.files.forEach(file => totalFileSize += file.size);
 
     if(result.ok) {
       const visibilityResult = yield rootStore.WrapApiCall({
@@ -232,7 +234,8 @@ class IngestStore {
             create: {
               complete: true,
               runState: "finished"
-            }
+            },
+            size: totalFileSize
           }
         });
 
@@ -347,24 +350,6 @@ class IngestStore {
           fileInfo,
           callback: UploadCallback,
           encryption: playbackEncryption.includes("drm") ? "cgck" : "none"
-        });
-
-        const filesMetadata = yield this.client.ContentObjectMetadata({
-          libraryId,
-          objectId: masterObjectId,
-          writeToken,
-          metadataSubtree: `/files/${fileInfo[0].path}`
-        });
-
-        this.UpdateIngestObject({
-          id: masterObjectId,
-          data: {
-            ...this.jobs[masterObjectId],
-            upload: {
-              ...this.jobs[masterObjectId].upload,
-              size: (filesMetadata && filesMetadata["."]) ? filesMetadata["."].size : ""
-            }
-          }
         });
       }
     } catch(error) {
