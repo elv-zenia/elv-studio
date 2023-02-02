@@ -5,6 +5,7 @@ import CloseIcon from "Assets/icons/close.svg";
 const InlineNotification = ({
   title,
   message,
+  subtext,
   type="error",
   hideCloseButton=false
 }) => {
@@ -18,20 +19,26 @@ const InlineNotification = ({
 
   return (
     <div className={`inline-notification inline-notification--${type}`}>
-      <span className="inline-notification__title">{ title }</span>
-      { message }
-      {
-        !hideCloseButton &&
-        <button
-          type="button"
-          title="Close notification"
-          aria-label="Close notification"
-          onClick={HandleClose}
-          className="inline-notification__close-button"
-        >
-          <ImageIcon className="inline-notification__close-button__icon" icon={CloseIcon} />
-        </button>
-      }
+      <div className="inline-notification__main">
+        {
+          title &&
+          <span className="inline-notification__main__title">{ title }</span>
+        }
+        { message }
+        {
+          !hideCloseButton &&
+          <button
+            type="button"
+            title="Close notification"
+            aria-label="Close notification"
+            onClick={HandleClose}
+            className="inline-notification__main__close-button"
+          >
+            <ImageIcon className="inline-notification__main__close-button__icon" icon={CloseIcon} />
+          </button>
+        }
+      </div>
+      <div className="inline-notification__subtext">{ subtext || "" }</div>
     </div>
   );
 };

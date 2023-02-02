@@ -91,6 +91,7 @@ const JobDetails = observer(() => {
         <InlineNotification
           type="error"
           message={ingestStore.jobs[jobId].errorMessage || fallbackErrorMessage}
+          subtext={ingestStore.jobs[jobId].errorDetails}
           hideCloseButton={true}
         />
       </div>

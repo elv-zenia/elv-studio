@@ -128,7 +128,7 @@ class IngestStore {
     return embedUrl.toString();
   };
 
-  HandleError = ({id, step, error, errorMessage}) => {
+  HandleError = ({id, step, error, errorMessage, errorDetails}) => {
     this.UpdateIngestObject({
       id,
       data: {
@@ -138,7 +138,8 @@ class IngestStore {
           runState: "failed"
         },
         error: true,
-        errorMessage
+        errorMessage,
+        errorDetails
       }
     });
 
@@ -392,11 +393,18 @@ class IngestStore {
     let logs;
     let warnings;
     let errors;
+
+    const GetErrorMessage = (error) => {
+      if(!error.cause) { return `${error.kind} ${error.op}`; }
+
+      return GetErrorMessage(error.cause);
+    };
+
     try {
       const response = yield this.client.CallBitcodeMethod({
         libraryId,
         objectId: masterObjectId,
-        writeToken,
+        writeToken: writeToken,
         method: UrlJoin("media", "production_master", "init"),
         body: {
           access
@@ -411,13 +419,17 @@ class IngestStore {
         return this.HandleError({
           step: "ingest",
           errorMessage: "Unable to get media information from production master.",
+          errorDetails: errors[0] ? GetErrorMessage(errors[0]) : undefined,
           id: masterObjectId
         });
       }
     } catch(error) {
+      const errors = error.body.errors;
+
       return this.HandleError({
         step: "ingest",
         errorMessage: "Unable to get media information from production master.",
+        errorDetails: errors[0] ? GetErrorMessage(errors[0]) : undefined,
         error,
         id: masterObjectId
       });
