@@ -379,12 +379,6 @@ class IngestStore {
     let warnings;
     let errors;
 
-    const GetErrorMessage = (error) => {
-      if(!error.cause) { return `${error.kind} ${error.op}`; }
-
-      return GetErrorMessage(error.cause);
-    };
-
     try {
       const response = yield this.client.CallBitcodeMethod({
         libraryId,
@@ -400,21 +394,18 @@ class IngestStore {
       warnings = response.warnings;
       errors = response.errors;
 
-      if(errors) {
+      if(errors && errors.length) {
         return this.HandleError({
           step: "ingest",
           errorMessage: "Unable to get media information from production master.",
-          errorDetails: errors[0] ? GetErrorMessage(errors[0]) : undefined,
+          errorDetails: errors.map(e => e.toString()).join(", "),
           id: masterObjectId
         });
       }
     } catch(error) {
-      const errors = error.body.errors;
-
       return this.HandleError({
         step: "ingest",
         errorMessage: "Unable to get media information from production master.",
-        errorDetails: errors[0] ? GetErrorMessage(errors[0]) : undefined,
         error,
         id: masterObjectId
       });
