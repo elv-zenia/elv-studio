@@ -118,7 +118,8 @@ const JobDetails = observer(() => {
       },
       {
         label: "Write Token",
-        value: ingestStore.jobs[jobId].writeToken
+        value: ingestStore.jobs[jobId].writeToken,
+        copyable: true
       },
       {
         label: "Node URL",
@@ -129,12 +130,16 @@ const JobDetails = observer(() => {
     return (
       <div className="job-details__job-info">
         {
-          infoValues.map(({label, value}) => (
-            <div key={`job-details-${label}`}>
+          infoValues.map(({label, value, copyable}) => (
+            <div key={`job-details-${label}`} className="job-details__job-info__row">
               <span className="job-details__job-info__label">
                 { `${label}:` }
               </span>
-              <span>{ value || "" }</span>
+              <span className="job-details__job-info__value">{ value || "" }</span>
+              {
+                copyable &&
+                <Copyable copy={value} />
+              }
             </div>
           ))
         }

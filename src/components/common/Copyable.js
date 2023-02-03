@@ -9,7 +9,10 @@ export const Copyable = ({copy, children, className}) => {
 
   return (
     <span className={`copyable ${className || ""}`}>
-      <div className="copyable__text">{ children }</div>
+      {
+        children &&
+        <div className="copyable__text">{ children }</div>
+      }
       <Tooltip
         className="copyable__tooltip"
         message="Copied"
