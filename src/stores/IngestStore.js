@@ -235,7 +235,9 @@ class IngestStore {
               complete: true,
               runState: "finished"
             },
-            size: totalFileSize
+            size: totalFileSize,
+            writeToken: createResponse.write_token,
+            nodeUrl: createResponse.nodeUrl
           }
         });
 

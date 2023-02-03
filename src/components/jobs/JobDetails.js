@@ -98,34 +98,55 @@ const JobDetails = observer(() => {
     );
   };
 
+  const JobInfo = () => {
+    const infoValues = [
+      {
+        label: "Name",
+        value: ingestStore.jobs[jobId].formData.master.title
+      },
+      {
+        label: "Total File Size",
+        value: PrettyBytes(ingestStore.jobs[jobId].size || 0)
+      },
+      {
+        label: "ID",
+        value: jobId
+      },
+      {
+        label: "Library ID",
+        value: ingestStore.jobs[jobId].formData.master.libraryId
+      },
+      {
+        label: "Write Token",
+        value: ingestStore.jobs[jobId].writeToken
+      },
+      {
+        label: "Node URL",
+        value: ingestStore.jobs[jobId].nodeUrl
+      }
+    ];
+
+    return (
+      <div className="job-details__job-info">
+        {
+          infoValues.map(({label, value}) => (
+            <div key={`job-details-${label}`}>
+              <span className="job-details__job-info__label">
+                { `${label}:` }
+              </span>
+              <span>{ value || "" }</span>
+            </div>
+          ))
+        }
+      </div>
+    );
+  };
+
   return (
     <div className="page-container">
       <div className="page__header">Details for {ingestStore.jobs[jobId].formData.master.title || jobId}</div>
       <div className="job-details">
-        <div className="job-details__job-info">
-          <div>
-            <span className="job-details__job-info__label">Name:</span>
-            <span>{ ingestStore.jobs[jobId].formData.master.title || "" }</span>
-          </div>
-
-          {
-            ingestStore.jobs[jobId].size &&
-            <div>
-              <span className="job-details__job-info__label">Total File Size:</span>
-              <span>{ PrettyBytes(ingestStore.jobs[jobId].size || 0) }</span>
-            </div>
-          }
-
-          <div>
-            <span className="job-details__job-info__label">ID:</span>
-            <span>{ jobId }</span>
-          </div>
-
-          <div>
-            <span className="job-details__job-info__label">Library ID:</span>
-            <span>{ ingestStore.jobs[jobId].formData.master.libraryId || "" }</span>
-          </div>
-        </div>
+        { JobInfo() }
 
         <h1 className="job-details__section-header">Progress Details</h1>
 

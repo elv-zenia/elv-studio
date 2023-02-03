@@ -29,6 +29,7 @@ class RootStore {
         target: window.parent,
         timeout: 60
       });
+      window.client = this.client;
 
       this.networkInfo = yield this.client.NetworkInfo();
     } catch(error) {
