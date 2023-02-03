@@ -15,6 +15,12 @@ class IngestStore {
   loaded;
   jobs;
   job;
+  showDialog = false;
+  dialog = {
+    title: "",
+    description: ""
+  }
+  dialogResponse = null;
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -86,6 +92,23 @@ class IngestStore {
   ClearJobs = () => {
     this.jobs = {};
     localStorage.removeItem("elv-jobs");
+  }
+
+  ShowWarningDialog = flow(function * ({title, description}) {
+    this.showDialog = true;
+    this.dialog = {
+      title,
+      description
+    };
+
+    return yield new Promise(resolve => {
+      this.dialogResponse = resolve;
+    });
+  });
+
+  HideWarningDialog = (response) => {
+    this.showDialog = false;
+    this.dialogResponse(response);
   }
 
   WaitForPublish = flow (function * ({hash, objectId}) {
@@ -421,6 +444,25 @@ class IngestStore {
         writeToken,
         metadataSubtree: UrlJoin("production_master", "variants", "default", "streams")
       }));
+
+      let missingStreams = [];
+      if(!streams.audio) { missingStreams.push("audio"); }
+      if(!streams.video) { missingStreams.push("video"); }
+
+      if(missingStreams.length > 0) {
+        const response = yield this.ShowWarningDialog({
+          title: "Streams Not Found",
+          description: `No ${missingStreams.join(", ")} streams found in the media file. Would you like to continue the ingest?`
+        });
+
+        if(response === "NO") {
+          return this.HandleError({
+            step: "ingest",
+            errorMessage: "Canceled ingest due to missing streams.",
+            id: masterObjectId
+          });
+        }
+      }
 
       this.UpdateIngestObject({
         id: masterObjectId,
