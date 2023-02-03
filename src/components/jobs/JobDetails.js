@@ -224,9 +224,7 @@ const JobDetails = observer(() => {
                     className="job-details__card__text__description"
                     copy={ingestStore.jobs[jobId].finalize.mezzanineHash}
                   >
-                    <div>
-                      { ingestStore.jobs[jobId].finalize.mezzanineHash }
-                    </div>
+                    { ingestStore.jobs[jobId].finalize.mezzanineHash }
                   </Copyable>
                 </div>
               </div>
