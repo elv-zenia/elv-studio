@@ -1,0 +1,19 @@
+.json-view {
+  background-color: $gray5;
+  border: 1px solid $gray2;
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
+  position: relative;
+  white-space: pre-wrap;
+  word-break: break-all;
+
+  &__data {
+    display: block;
+  }
+
+  &__copy-button {
+    position: absolute;
+    right: 1rem;
+    top: 0.5rem;
+  }
+}

@@ -1,4 +1,4 @@
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import {useRouteMatch} from "react-router-dom";
 import {observer} from "mobx-react";
 import PrettyBytes from "pretty-bytes";
@@ -10,8 +10,11 @@ import {Copyable} from "Components/common/Copyable";
 import CheckmarkIcon from "Assets/icons/check.svg";
 import LoadingIcon from "Assets/icons/loading.gif";
 import InlineNotification from "Components/common/InlineNotification";
+import Dialog from "Components/common/Dialog";
+import JSONView from "Components/common/JSONView";
 
 const JobDetails = observer(() => {
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
   const match = useRouteMatch();
   const jobId = match.params.id;
 
@@ -81,7 +84,7 @@ const JobDetails = observer(() => {
 
   if(!ingestStore.job) { return <PageLoader />; }
 
-  const DisplayError = () => {
+  const ErrorNotification = () => {
     if(!ingestStore.jobs[jobId].error) { return null; }
 
     const fallbackErrorMessage = "Unable to create media playable object.";
@@ -91,8 +94,9 @@ const JobDetails = observer(() => {
         <InlineNotification
           type="error"
           message={ingestStore.jobs[jobId].errorMessage || fallbackErrorMessage}
-          subtext={ingestStore.jobs[jobId].errorDetails}
           hideCloseButton={true}
+          actionText="Learn More"
+          ActionCallback={() => setShowErrorDialog(true)}
         />
       </div>
     );
@@ -144,6 +148,60 @@ const JobDetails = observer(() => {
           ))
         }
       </div>
+    );
+  };
+
+  const FinalizeInfo = () => {
+    if(!ingestStore.jobs[jobId].finalize.mezzanineHash) { return null; }
+
+    return (
+      <>
+        <h1 className="job-details__section-header">Mezzanine Object Details</h1>
+        <div className="job-details__card job-details__card--secondary">
+          <div className="job-details__card__text">
+            <div>Hash</div>
+            <Copyable
+              className="job-details__card__text__description"
+              copy={ingestStore.jobs[jobId].finalize.mezzanineHash}
+            >
+              { ingestStore.jobs[jobId].finalize.mezzanineHash }
+            </Copyable>
+          </div>
+        </div>
+        <div className="job-details__card job-details__card--secondary">
+          <div className="job-details__card__text">
+            <div>ID</div>
+            <div className="job-details__card__text__description">
+              <button
+                type="button"
+                className="job-details__card__inline-link"
+                onClick={() => OpenObjectLink({
+                  libraryId: ingestStore.jobs[jobId].formData.mez.libraryId,
+                  objectId: ingestStore.jobs[jobId].finalize.objectId
+                })} >
+                <span>{ ingestStore.jobs[jobId].finalize.objectId }</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  };
+
+  const ErrorDialog = () => {
+    if(!showErrorDialog) { return null; }
+
+    return (
+      <Dialog
+        open={showErrorDialog}
+        onOpenChange={() => setShowErrorDialog(false)}
+        title={`Error Log for ${ingestStore.jobs[jobId].formData.master.title || jobId}`}
+        hideCancelButton={true}
+        confirmText="Close"
+        size="MD"
+      >
+        <JSONView json={ingestStore.jobs[jobId].errorLog} copyable={true} />
+      </Dialog>
     );
   };
 
@@ -218,40 +276,9 @@ const JobDetails = observer(() => {
           }
         </div>
 
-        {
-          ingestStore.jobs[jobId].finalize.mezzanineHash &&
-            <>
-              <h1 className="job-details__section-header">Mezzanine Object Details</h1>
-              <div className="job-details__card job-details__card--secondary">
-                <div className="job-details__card__text">
-                  <div>Hash</div>
-                  <Copyable
-                    className="job-details__card__text__description"
-                    copy={ingestStore.jobs[jobId].finalize.mezzanineHash}
-                  >
-                    { ingestStore.jobs[jobId].finalize.mezzanineHash }
-                  </Copyable>
-                </div>
-              </div>
-              <div className="job-details__card job-details__card--secondary">
-                <div className="job-details__card__text">
-                  <div>ID</div>
-                  <div className="job-details__card__text__description">
-                    <button
-                      type="button"
-                      className="job-details__card__inline-link"
-                      onClick={() => OpenObjectLink({
-                        libraryId: ingestStore.jobs[jobId].formData.mez.libraryId,
-                        objectId: ingestStore.jobs[jobId].finalize.objectId
-                      })} >
-                      <span>{ ingestStore.jobs[jobId].finalize.objectId }</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
-        }
-        { DisplayError() }
+        { FinalizeInfo() }
+        { ErrorNotification() }
+        { ErrorDialog() }
       </div>
     </div>
   );

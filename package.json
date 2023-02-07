@@ -29,7 +29,6 @@
     "react-dropzone": "^14.2.0",
     "react-inlinesvg": "^3.0.1",
     "react-router-dom": "5.2.0",
-    "select": "^1.1.2",
     "url-join": "^5.0.0"
   },
   "devDependencies": {

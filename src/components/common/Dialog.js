@@ -1,6 +1,13 @@
 import React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 
+const dialogSizes = {
+  "XS": "xs",
+  "SM": "sm",
+  "MD": "md",
+  "LG": "lg"
+};
+
 const Dialog = ({
   trigger,
   title,
@@ -9,8 +16,11 @@ const Dialog = ({
   CancelCallback,
   confirmText="Confirm",
   cancelText="Cancel",
+  hideCancelButton=false,
   open,
-  onOpenChange
+  onOpenChange,
+  children,
+  size=dialogSizes["SM"]
 }) => {
   const Dialog = DialogPrimitive.Root;
   const DialogTrigger = DialogPrimitive.Trigger;
@@ -25,15 +35,24 @@ const Dialog = ({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogTrigger asChild>{ trigger }</DialogTrigger>
         <DialogOverlay className="dialog__overlay">
-          <DialogContent className="dialog__content">
-            <DialogTitle>{ title }</DialogTitle>
-            <DialogDescription>{ description }</DialogDescription>
+          <DialogContent className={`dialog__content dialog__content--${dialogSizes[size]}`}>
+            <DialogTitle className="dialog__content__body__title">{ title }</DialogTitle>
+            <div className="dialog__content__body">
+              {
+                description &&
+                <DialogDescription>{ description }</DialogDescription>
+              }
+              { children }
+            </div>
             <div className="dialog__actions">
-              <DialogClose asChild>
-                <button type="button" className="secondary-button" onClick={CancelCallback}>
-                  { cancelText }
-                </button>
-              </DialogClose>
+              {
+                !hideCancelButton &&
+                <DialogClose asChild>
+                  <button type="button" className="secondary-button" onClick={CancelCallback}>
+                    { cancelText }
+                  </button>
+                </DialogClose>
+              }
               <DialogClose asChild>
                 <button type="button" className="primary-button" onClick={ConfirmCallback}>
                   { confirmText }

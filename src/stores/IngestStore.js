@@ -151,7 +151,7 @@ class IngestStore {
     return embedUrl.toString();
   };
 
-  HandleError = ({id, step, error, errorMessage, errorDetails}) => {
+  HandleError = ({id, step, error, errorMessage}) => {
     this.UpdateIngestObject({
       id,
       data: {
@@ -162,7 +162,7 @@ class IngestStore {
         },
         error: true,
         errorMessage,
-        errorDetails
+        errorLog: typeof error === "object" ? JSON.stringify(error, null, 2) : error
       }
     });
 
@@ -423,7 +423,7 @@ class IngestStore {
         return this.HandleError({
           step: "ingest",
           errorMessage: "Unable to get media information from production master.",
-          errorDetails: errors.map(e => e.toString()).join(", "),
+          error: errors.map(e => e.toString()).join(", "),
           id: masterObjectId
         });
       }
@@ -445,14 +445,14 @@ class IngestStore {
         metadataSubtree: UrlJoin("production_master", "variants", "default", "streams")
       }));
 
-      let missingStreams = [];
-      if(!streams.audio) { missingStreams.push("audio"); }
-      if(!streams.video) { missingStreams.push("video"); }
+      let unsupportedStreams = [];
+      if(!streams.audio) { unsupportedStreams.push("audio"); }
+      if(!streams.video) { unsupportedStreams.push("video"); }
 
-      if(missingStreams.length > 0) {
+      if(unsupportedStreams.length > 0) {
         const response = yield this.ShowWarningDialog({
           title: "Streams Not Found",
-          description: `No ${missingStreams.join(", ")} streams found in the media file. Would you like to continue the ingest?`
+          description: `No suitable ${unsupportedStreams.join(", ")} streams found in the media file. Would you like to continue the ingest?`
         });
 
         if(response === "NO") {

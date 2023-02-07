@@ -34,12 +34,24 @@
       padding-right: 0.5rem;
     }
 
-    &__close-button {
+    &__right-container {
+      display: flex;
       margin-left: auto;
 
-      &__icon {
-        height: 17px;
-        width: 17px;
+      &__action {
+        color: $blue;
+        margin-right: 1rem;
+      }
+
+      &__close-button {
+        align-items: center;
+        display: flex;
+        justify-content: center;
+
+        &__icon {
+          height: 17px;
+          width: 17px;
+        }
       }
     }
   }

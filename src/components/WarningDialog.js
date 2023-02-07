@@ -4,6 +4,8 @@ import Dialog from "Components/common/Dialog";
 import {ingestStore} from "Stores";
 
 const WarningDialog = observer(() => {
+  if(!ingestStore.showDialog) { return null; }
+
   return (
     <Dialog
       title={ingestStore.dialog.title}
@@ -14,7 +16,6 @@ const WarningDialog = observer(() => {
       confirmText="Yes"
       CancelCallback={() => ingestStore.HideWarningDialog("NO")}
       cancelText="No"
-      Cancel
     />
   );
 });
