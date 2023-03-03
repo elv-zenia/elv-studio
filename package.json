@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@eluvio/elv-abr-profile": "^1.0.0",
-    "@eluvio/elv-client-js": "^4.0.10",
+    "@eluvio/elv-client-js": "^4.0.14",
     "@eluvio/elv-lro-status": "^3.0.6",
     "@radix-ui/react-dialog": "^1.0.0",
     "@radix-ui/react-tooltip": "^1.0.0",

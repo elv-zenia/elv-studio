@@ -5,9 +5,6 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 module.exports = {
   target: "web",
-  stats: {
-    warningsFilter: ["./node_modules/ethers/dist/ethers.min.js"]
-  },
   output: {
     chunkFilename: "[name].[contenthash].bundle.js",
   },
