@@ -235,8 +235,11 @@ class IngestStore {
       })
     });
     const createResponse = result.returnVal;
-    let totalFileSize = 0;
-    formData.master.files.forEach(file => totalFileSize += file.size);
+    let totalFileSize;
+    if(formData.master.files) {
+      totalFileSize = 0;
+      formData.master.files.forEach(file => totalFileSize += file.size);
+    }
 
     if(result.ok) {
       const visibilityResult = yield rootStore.WrapApiCall({
@@ -364,6 +367,24 @@ class IngestStore {
           signedUrl,
           copy,
           encryption: playbackEncryption.includes("drm") ? "cgck" : "none"
+        });
+
+        // Calculate file size for S3 upload. Local upload has been calculated already
+        let fileSize;
+        const fileMeta = yield this.client.ContentObjectMetadata({
+          libraryId,
+          objectId: masterObjectId,
+          writeToken,
+          metadataSubtree: `/files/${baseName}`
+        });
+        fileSize = fileMeta["."].size;
+
+        this.UpdateIngestObject({
+          id: masterObjectId,
+          data: {
+            ...this.jobs[masterObjectId],
+            size: fileSize
+          }
         });
       } else {
         const fileInfo = yield FileInfo("", files);

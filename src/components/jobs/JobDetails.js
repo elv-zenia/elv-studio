@@ -110,7 +110,8 @@ const JobDetails = observer(() => {
       },
       {
         label: "Total File Size",
-        value: PrettyBytes(ingestStore.jobs[jobId].size || 0)
+        value: PrettyBytes(ingestStore.jobs[jobId].size || 0),
+        hidden: ingestStore.jobs[jobId].size === undefined
       },
       {
         label: "ID",
@@ -134,18 +135,20 @@ const JobDetails = observer(() => {
     return (
       <div className="job-details__job-info">
         {
-          infoValues.map(({label, value, copyable}) => (
-            <div key={`job-details-${label}`} className="job-details__job-info__row">
-              <span className="job-details__job-info__label">
-                { `${label}:` }
-              </span>
-              <span className="job-details__job-info__value">{ value || "" }</span>
-              {
-                copyable &&
-                <Copyable copy={value} />
-              }
-            </div>
-          ))
+          infoValues
+            .filter(item => !item.hidden)
+            .map(({label, value, copyable}) => (
+              <div key={`job-details-${label}`} className="job-details__job-info__row">
+                <span className="job-details__job-info__label">
+                  { `${label}:` }
+                </span>
+                <span className="job-details__job-info__value">{ value || "" }</span>
+                {
+                  copyable &&
+                  <Copyable copy={value} />
+                }
+              </div>
+            ))
         }
       </div>
     );
