@@ -707,10 +707,20 @@ class IngestStore {
     let error;
     let statusIntervalId;
     while(!done && !error) {
-      let status = yield this.client.LROStatus({
-        libraryId,
-        objectId
-      });
+      let status;
+      try {
+        status = yield this.client.LROStatus({
+          libraryId,
+          objectId
+        });
+      } catch(error) {
+        this.HandleError({
+          step: "ingest",
+          errorMessage: "Failed to get LRO status.",
+          error,
+          id: masterObjectId
+        });
+      }
 
       if(status === undefined) {
         return this.HandleError({
