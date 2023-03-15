@@ -56,10 +56,13 @@ class IngestStore {
         currentStep: "",
         upload: {},
         ingest: {},
-        finalize: {}
+        finalize: {},
+        lastUpdatedTime: new Date().toISOString(),
+        active: true
       };
     }
 
+    data.lastUpdatedTime = new Date().toISOString();
     this.jobs[id] = Object.assign(
       this.jobs[id],
       data
@@ -89,9 +92,26 @@ class IngestStore {
     this.UpdateIngestJobs({jobs: this.jobs});
   }
 
-  ClearJobs = () => {
-    this.jobs = {};
-    localStorage.removeItem("elv-jobs");
+  ClearInactiveJobs = () => {
+    const jobs = {};
+    Object.keys(this.jobs).forEach(jobId => {
+      let job = this.jobs[jobId];
+      if(!job.lastUpdatedTime || !job.active) { return; }
+
+      const lastUpdatedDifference = (
+        new Date(new Date().toISOString()).valueOf() - new Date(job.lastUpdatedTime).valueOf()
+      ) / 1000;
+
+      if(lastUpdatedDifference <= 120) {
+        jobs[jobId] = Object.assign({}, job);
+      }
+    });
+
+    this.UpdateIngestJobs({jobs});
+    localStorage.setItem(
+      "elv-jobs",
+      btoa(JSON.stringify(jobs))
+    );
   }
 
   ShowWarningDialog = flow(function * ({title, description}) {
@@ -162,7 +182,8 @@ class IngestStore {
         },
         error: true,
         errorMessage,
-        errorLog: typeof error === "object" ? JSON.stringify(error, null, 2) : error
+        errorLog: typeof error === "object" ? JSON.stringify(error, null, 2) : error,
+        active: false
       }
     });
 
@@ -682,7 +703,7 @@ class IngestStore {
     try {
       const response = yield this.client.StartABRMezzanineJobs({
         libraryId,
-        objectId: objectId,
+        objectId,
         access
       });
 
@@ -938,7 +959,8 @@ class IngestStore {
             runState: "finished",
             mezzanineHash: finalizeAbrResponse.hash,
             objectId: finalizeAbrResponse.id
-          }
+          },
+          active: false
         }
       });
     } catch(error) {

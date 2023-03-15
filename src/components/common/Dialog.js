@@ -20,7 +20,7 @@ const Dialog = ({
   open,
   onOpenChange,
   children,
-  size=dialogSizes["SM"]
+  size="SM"
 }) => {
   const Dialog = DialogPrimitive.Root;
   const DialogTrigger = DialogPrimitive.Trigger;

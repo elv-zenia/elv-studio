@@ -49,7 +49,7 @@ const Jobs = observer(() => {
           <Dialog
             title="Clear Jobs"
             description="Are you sure you want to clear all inactive jobs? This action cannot be undone."
-            ConfirmCallback={ingestStore.ClearJobs}
+            ConfirmCallback={ingestStore.ClearInactiveJobs}
             open={showClearJobsDialog}
             onOpenChange={() => setShowClearJobsDialog(false)}
           />
