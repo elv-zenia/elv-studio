@@ -173,7 +173,8 @@ const Form = observer(() => {
       !playbackEncryption ||
       playbackEncryption === "custom" && !abrProfile ||
       errorMessage ||
-      errorTitle
+      errorTitle ||
+      !mezContentType
     ) {
       return false;
     }

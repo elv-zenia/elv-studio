@@ -310,8 +310,7 @@ class IngestStore {
     access=[],
     copy,
     masterObjectId,
-    writeToken,
-    mezContentType
+    writeToken
   }) {
     ValidateLibrary(libraryId);
 
@@ -554,12 +553,11 @@ class IngestStore {
     }
 
     // Create ABR Ladder
-    let {abrProfile, contentTypeId} = yield this.CreateABRLadder({
+    let {abrProfile} = yield this.CreateABRLadder({
       libraryId,
       objectId: masterObjectId,
       writeToken,
-      abr,
-      mezContentType
+      abr
     });
 
     // Update name to remove [ingest: uploading]
@@ -647,7 +645,6 @@ class IngestStore {
     return Object.assign(
       finalizeResponse, {
         abrProfile,
-        contentTypeId,
         access,
         errors: errors || [],
         logs: logs || [],
@@ -885,8 +882,7 @@ class IngestStore {
     libraryId,
     objectId,
     writeToken,
-    abr,
-    mezContentType
+    abr
   }) {
     try {
       const {production_master} = yield this.client.ContentObjectMetadata({
@@ -923,8 +919,7 @@ class IngestStore {
       }
 
       return {
-        abrProfile: generatedProfile.result,
-        contentTypeId: mezContentType
+        abrProfile: generatedProfile.result
       };
     } catch(error) {
       return this.HandleError({

@@ -40,6 +40,7 @@ const JobDetails = observer(() => {
 
     const {abr, access, copy, files, libraryId, title, accessGroup, description, s3Url, writeToken, playbackEncryption} = ingestStore.job.formData.master;
     const mezFormData = ingestStore.job.formData.mez;
+    const {contentType} = ingestStore.job.formData;
 
     const response = await ingestStore.CreateProductionMaster({
       libraryId,
@@ -53,8 +54,7 @@ const JobDetails = observer(() => {
       copy,
       masterObjectId: jobId,
       writeToken,
-      playbackEncryption,
-      mezContentType: ingestStore.job.mezContentType
+      playbackEncryption
     });
 
     if(!response) { return; }
@@ -72,7 +72,7 @@ const JobDetails = observer(() => {
       masterObjectId: response.id,
       masterVersionHash: response.hash,
       abrProfile: response.abrProfile,
-      type: response.contentTypeId,
+      type: contentType,
       name: mezFormData.name,
       accessGroupAddress: mezFormData.accessGroup,
       description: mezFormData.description,
