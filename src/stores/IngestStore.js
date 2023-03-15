@@ -188,6 +188,7 @@ class IngestStore {
     });
 
     console.error(errorMessage, error);
+    throw error;
   }
 
   LoadLibraries = flow(function * () {
@@ -734,8 +735,9 @@ class IngestStore {
         });
       } catch(error) {
         errorState = true;
+        if(statusIntervalId) clearInterval(statusIntervalId);
 
-        this.HandleError({
+        return this.HandleError({
           step: "ingest",
           errorMessage: "Failed to get LRO status.",
           error,
@@ -745,6 +747,7 @@ class IngestStore {
 
       if(status === undefined) {
         errorState = true;
+        if(statusIntervalId) clearInterval(statusIntervalId);
 
         return this.HandleError({
           step: "ingest",
