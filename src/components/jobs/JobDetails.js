@@ -95,7 +95,7 @@ const JobDetails = observer(() => {
           type="error"
           message={ingestStore.jobs[jobId].errorMessage || fallbackErrorMessage}
           hideCloseButton={true}
-          actionText="Learn More"
+          actionText={ingestStore.jobs[jobId].errorLog ?  "Learn More" : undefined}
           ActionCallback={() => setShowErrorDialog(true)}
         />
       </div>

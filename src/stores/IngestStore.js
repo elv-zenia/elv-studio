@@ -682,7 +682,7 @@ class IngestStore {
     try {
       const response = yield this.client.StartABRMezzanineJobs({
         libraryId,
-        objectId,
+        objectId: objectId,
         access
       });
 
@@ -704,9 +704,9 @@ class IngestStore {
     });
 
     let done;
-    let error;
+    let errorState;
     let statusIntervalId;
-    while(!done && !error) {
+    while(!done && !errorState) {
       let status;
       try {
         status = yield this.client.LROStatus({
@@ -714,6 +714,8 @@ class IngestStore {
           objectId
         });
       } catch(error) {
+        errorState = true;
+
         this.HandleError({
           step: "ingest",
           errorMessage: "Failed to get LRO status.",
@@ -723,6 +725,8 @@ class IngestStore {
       }
 
       if(status === undefined) {
+        errorState = true;
+
         return this.HandleError({
           step: "ingest",
           errorMessage: "Received no job status information from server.",
@@ -740,7 +744,7 @@ class IngestStore {
 
         if(!enhancedStatus.ok) {
           clearInterval(statusIntervalId);
-          error = true;
+          errorState = true;
 
           return this.HandleError({
             step: "ingest",
@@ -816,6 +820,9 @@ class IngestStore {
               }
             });
           } catch(error) {
+            clearInterval(statusIntervalId);
+            errorState = true;
+
             return this.HandleError({
               step: "ingest",
               errorMessage: "Unable to update metadata with NFT details.",
@@ -834,6 +841,9 @@ class IngestStore {
             try {
               await this.client.AddContentObjectGroupPermission({objectId, groupAddress: accessGroupAddress, permission: "manage"});
             } catch(error) {
+              clearInterval(statusIntervalId);
+              errorState = true;
+
               return this.HandleError({
                 step: "ingest",
                 errorMessage: `Unable to add group permission for group: ${accessGroupAddress}`,
