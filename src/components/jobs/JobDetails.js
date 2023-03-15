@@ -129,6 +129,10 @@ const JobDetails = observer(() => {
       {
         label: "Node URL",
         value: ingestStore.jobs[jobId].nodeUrl
+      },
+      {
+        label: "Content Type",
+        value: ingestStore.jobs[jobId].formData.contentType || ""
       }
     ];
 

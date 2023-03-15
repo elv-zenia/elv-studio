@@ -256,6 +256,7 @@ class IngestStore {
       })
     });
     const createResponse = result.returnVal;
+    formData.contentType = mezContentType;
     let totalFileSize;
     if(formData.master.files) {
       totalFileSize = 0;
