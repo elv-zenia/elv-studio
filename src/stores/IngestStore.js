@@ -4,7 +4,7 @@ import UrlJoin from "url-join";
 import {FileInfo} from "Utils/Files";
 import Path from "path";
 import {rootStore} from "./index";
-import {DrmWidevineFairplayProfile} from "Utils/ABR";
+import {DrmPublicProfile, DrmWidevineFairplayProfile} from "Utils/ABR";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
 const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
@@ -195,6 +195,7 @@ class IngestStore {
     try {
       if(!this.libraries) {
         this.libraries = {};
+        let loadedLibraries = {};
 
         const libraryIds = yield this.client.ContentLibraries() || [];
         yield Promise.all(
@@ -211,7 +212,7 @@ class IngestStore {
 
             if(!response) { return; }
 
-            this.libraries[libraryId] = {
+            loadedLibraries[libraryId] = {
               libraryId,
               name: response.public && response.public.name || libraryId,
               abr: response.abr,
@@ -223,6 +224,9 @@ class IngestStore {
             };
           })
         );
+        // eslint-disable-next-line no-unused-vars
+        const sortedArray = Object.entries(loadedLibraries).sort(([id1, obj1], [id2, obj2]) => obj1.name.localeCompare(obj2.name));
+        this.libraries = Object.fromEntries(sortedArray);
       }
     } catch(error) {
       console.error("Failed to load libraries", error);
@@ -236,13 +240,15 @@ class IngestStore {
       if(!this.accessGroups) {
         this.accessGroups = {};
         const accessGroups = yield this.client.ListAccessGroups() || [];
-        accessGroups.map(async accessGroup => {
-          if(accessGroup.meta["name"]){
-            this.accessGroups[accessGroup.meta["name"]] = accessGroup;
-          } else {
-            this.accessGroups[accessGroup.id] = accessGroup;
-          }
-        });
+        accessGroups
+          .sort((a, b) => (a.meta.name.toLowerCase() || a.id).localeCompare(b.meta.name.toLowerCase() || b.id))
+          .map(async accessGroup => {
+            if(accessGroup.meta["name"]){
+              this.accessGroups[accessGroup.meta["name"]] = accessGroup;
+            } else {
+              this.accessGroups[accessGroup.id] = accessGroup;
+            }
+          });
       }
     } catch(error) {
       console.error("Failed to load access groups", error);
@@ -625,6 +631,8 @@ class IngestStore {
 
       if(playbackEncryption === "drm") {
         abrProfileExclude = ABR.ProfileExcludeClear(abrProfile);
+      } else if(playbackEncryption === "drm-public") {
+        abrProfileExclude = DrmPublicProfile({abrProfile});
       } else if(playbackEncryption === "drm-restricted") {
         abrProfileExclude = DrmWidevineFairplayProfile({abrProfile});
       } else if(playbackEncryption === "clear") {

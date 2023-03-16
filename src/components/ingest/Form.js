@@ -526,12 +526,13 @@ const Form = observer(() => {
           <h1 className="form__section-header">Playback Settings</h1>
           <Select
             label="Playback Encryption"
-            labelDescription="Select a playback encryption option. Enable Clear or Digital Rights Management copy protection during playback. Restricted DRM will have only Widevine and Fairplay options. To configure the ABR profile entirely, use the Custom option."
+            labelDescription="Select a playback encryption option. Enable Clear or Digital Rights Management (DRM) copy protection during playback. To configure the ABR profile entirely, use the Custom option."
             formName="playbackEncryption"
             required={true}
             options={[
-              {value: "drm", label: "Digital Rights Management (all formats)", disabled: disableDrm},
-              {value: "drm-restricted", label: "Digital Rights Management (restricted)", disabled: disableDrm},
+              {value: "drm-public", label: "DRM - Public Access", disabled: disableDrm},
+              {value: "drm", label: "DRM - All Formats", disabled: disableDrm},
+              {value: "drm-restricted", label: "DRM - Widevine and Fairplay", disabled: disableDrm},
               {value: "clear", label: "Clear"},
               {value: "custom", label: "Custom"}
             ]}

@@ -20,3 +20,22 @@ export const DrmWidevineFairplayProfile = ({abrProfile={}}) => {
     result: abrProfile
   };
 };
+
+export const DrmPublicProfile = ({abrProfile}) => {
+  if(!abrProfile.playout_formats) { throw Error("No playout formats found"); }
+
+  let playoutFormats = {};
+
+  Object.keys(abrProfile.playout_formats).forEach(formatName => {
+    if(!["fairplay", "clear"].some(name => formatName.includes(name))) {
+      playoutFormats[formatName] = abrProfile.playout_formats[formatName];
+    }
+  });
+
+  abrProfile.playout_formats = playoutFormats;
+
+  return {
+    ok: true,
+    result: abrProfile
+  };
+};
