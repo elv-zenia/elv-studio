@@ -16,7 +16,7 @@
     "prepare": "husky install"
   },
   "dependencies": {
-    "@eluvio/elv-abr-profile": "^1.0.0",
+    "@eluvio/elv-abr-profile": "^1.0.1",
     "@eluvio/elv-client-js": "^4.0.19",
     "@eluvio/elv-lro-status": "^3.0.7",
     "@radix-ui/react-dialog": "^1.0.0",
