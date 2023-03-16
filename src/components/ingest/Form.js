@@ -248,9 +248,23 @@ const Form = observer(() => {
       let accessGroup = ingestStore.accessGroups[masterGroup] ? ingestStore.accessGroups[masterGroup].address : undefined;
       let mezAccessGroupAddress = useMasterAsMez? accessGroup : ingestStore.accessGroups[mezGroup] ? ingestStore.accessGroups[mezGroup].address : undefined;
 
+      let abrMetadata;
+      let type;
+      if(playbackEncryption === "custom") {
+        abrMetadata = JSON.stringify({
+          ...JSON.parse(abrProfile),
+          mez_content_type: mezContentType
+        }, null, 2);
+
+        type = JSON.parse(abrMetadata).mez_content_type;
+      } else {
+        abrMetadata = abrProfile;
+        type = mezContentType;
+      }
+
       let createParams = {
         libraryId: masterLibrary,
-        mezContentType: mezContentType,
+        mezContentType: type,
         formData: {
           master: {
             libraryId: masterLibrary,
@@ -261,7 +275,8 @@ const Form = observer(() => {
             s3Url: uploadMethod === "s3" ? s3Url : undefined,
             playbackEncryption,
             access: JSON.stringify(access, null, 2) || "",
-            copy: s3Copy
+            copy: s3Copy,
+            abr: abrMetadata
           },
           mez: {
             libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
@@ -273,16 +288,6 @@ const Form = observer(() => {
           }
         }
       };
-
-      if(playbackEncryption === "custom") {
-        const abrMetadata = JSON.stringify({
-          ...JSON.parse(abrProfile),
-          mez_content_type: mezContentType
-        }, null, 2);
-
-        createParams.formData.master["abr"] = abrMetadata;
-        createParams.mezContentType = JSON.parse(abrMetadata).mez_content_type;
-      }
 
       const createResponse = await ingestStore.CreateContentObject(createParams);
 
