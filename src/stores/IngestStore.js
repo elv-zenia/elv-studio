@@ -241,7 +241,7 @@ class IngestStore {
         this.accessGroups = {};
         const accessGroups = yield this.client.ListAccessGroups() || [];
         accessGroups
-          .sort((a, b) => (a.meta.name.toLowerCase() || a.id).localeCompare(b.meta.name.toLowerCase() || b.id))
+          .sort((a, b) => (a.meta.name || a.id).localeCompare(b.meta.name || b.id))
           .map(async accessGroup => {
             if(accessGroup.meta["name"]){
               this.accessGroups[accessGroup.meta["name"]] = accessGroup;
