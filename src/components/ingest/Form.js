@@ -11,7 +11,7 @@ import PrettyBytes from "pretty-bytes";
 import InlineNotification from "Components/common/InlineNotification";
 import ImageIcon from "Components/common/ImageIcon";
 import CloseIcon from "Assets/icons/close";
-import {abrProfileDrm} from "Utils/ABR";
+import {abrProfileClear, abrProfileDrm} from "Utils/ABR";
 
 const ErrorMessaging = ({errorTitle, errorMessage}) => {
   if(!errorTitle && !errorMessage) { return null; }
@@ -86,9 +86,11 @@ const SetPlaybackSettings = ({
   useMasterAsMez,
   DisableDrmCallback,
   SetMezContentTypeCallback,
-  SetAbrProfileCallback
+  SetAbrProfileCallback,
+  SetHasDrmCert
 }) => {
   const hasDrmCert = library.drmCert;
+  SetHasDrmCert(hasDrmCert);
   DisableDrmCallback(!hasDrmCert);
 
   if(type === "MASTER" && useMasterAsMez || type === "MEZ") {
@@ -100,7 +102,7 @@ const SetPlaybackSettings = ({
     SetMezContentTypeCallback(mezContentType);
 
     if(!profile || Object.keys(profile).length === 0) {
-      SetAbrProfileCallback(JSON.stringify({default_profile: abrProfileDrm}, null, 2));
+      SetAbrProfileCallback(JSON.stringify({default_profile: hasDrmCert ? abrProfileDrm : abrProfileClear}, null, 2));
     }
   }
 };
@@ -128,6 +130,7 @@ const Form = observer(() => {
   const [playbackEncryption, setPlaybackEncryption] = useState("");
   const [useMasterAsMez, setUseMasterAsMez] = useState(true);
   const [disableDrm, setDisableDrm] = useState(false);
+  const [hasDrmCert, setHasDrmCert] = useState(false);
 
   const [s3Url, setS3Url] = useState();
   const [s3Region, setS3Region] = useState();
@@ -146,7 +149,8 @@ const Form = observer(() => {
       useMasterAsMez,
       DisableDrmCallback: setDisableDrm,
       SetMezContentTypeCallback: setMezContentType,
-      SetAbrProfileCallback: setAbrProfile
+      SetAbrProfileCallback: setAbrProfile,
+      SetHasDrmCert: setHasDrmCert
     });
   }, [masterLibrary]);
 
@@ -159,7 +163,8 @@ const Form = observer(() => {
       useMasterAsMez,
       DisableDrmCallback: setDisableDrm,
       SetMezContentTypeCallback: setMezContentType,
-      SetAbrProfileCallback: setAbrProfile
+      SetAbrProfileCallback: setAbrProfile,
+      SetHasDrmCert: setHasDrmCert
     });
   }, [mezLibrary]);
 
@@ -177,7 +182,7 @@ const Form = observer(() => {
 
   useEffect(() => {
     if(playbackEncryption === "custom" && !abrProfile) {
-      const profile = JSON.stringify({default_profile: abrProfileDrm}, null, 2);
+      const profile = JSON.stringify({default_profile: hasDrmCert ? abrProfileDrm : abrProfileClear}, null, 2);
       setAbrProfile(profile);
     }
   }, [playbackEncryption]);
