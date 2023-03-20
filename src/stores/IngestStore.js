@@ -957,10 +957,14 @@ class IngestStore {
         objectId
       });
 
+      const formData = this.jobs[masterObjectId].formData;
+      delete formData.master.abr;
+
       this.UpdateIngestObject({
         id: masterObjectId,
         data: {
           ...this.jobs[masterObjectId],
+          formData,
           finalize: {
             complete: true,
             runState: "finished",
