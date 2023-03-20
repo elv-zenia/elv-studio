@@ -1,3 +1,5 @@
+const defaultAbrDrmProfile = require("./profiles/abrProfileDrm.json");
+
 /**
  * Manipulate ABR Profile to return only Widevine and
  * Fairplay playout formats
@@ -39,3 +41,5 @@ export const DrmPublicProfile = ({abrProfile}) => {
     result: abrProfile
   };
 };
+
+export const abrProfileDrm = defaultAbrDrmProfile;

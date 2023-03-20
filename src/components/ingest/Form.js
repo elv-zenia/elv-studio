@@ -11,6 +11,7 @@ import PrettyBytes from "pretty-bytes";
 import InlineNotification from "Components/common/InlineNotification";
 import ImageIcon from "Components/common/ImageIcon";
 import CloseIcon from "Assets/icons/close";
+import {abrProfileDrm} from "Utils/ABR";
 
 const Form = observer(() => {
   const [isCreating, setIsCreating] = useState(false);
@@ -49,7 +50,7 @@ const Form = observer(() => {
     const hasDrmCert = library.drmCert;
     setDisableDrm(!hasDrmCert);
 
-    if(type === "master" && useMasterAsMez || type === "mez") {
+    if(type === "MASTER" && useMasterAsMez || type === "MEZ") {
       const abr = JSON.stringify(library.abr, null, 2) || "";
       setAbrProfile(abr);
       const profile = library.abr && library.abr.default_profile;
@@ -58,7 +59,7 @@ const Form = observer(() => {
       setMezContentType(mezContentType);
 
       if(!profile || Object.keys(profile).length === 0) {
-        setAbrProfile(JSON.stringify({default_profile: {}}, null, 2));
+        setAbrProfile(JSON.stringify({default_profile: abrProfileDrm}, null, 2));
       }
     }
   };
@@ -68,7 +69,7 @@ const Form = observer(() => {
 
     SetPlaybackSettings({
       libraryId: masterLibrary,
-      type: "master"
+      type: "MASTER"
     });
   }, [masterLibrary]);
 
@@ -77,7 +78,7 @@ const Form = observer(() => {
 
     SetPlaybackSettings({
       libraryId: mezLibrary,
-      type: "mez"
+      type: "MEZ"
     });
   }, [mezLibrary]);
 
@@ -100,8 +101,8 @@ const Form = observer(() => {
   }, [files]);
 
   useEffect(() => {
-    if(playbackEncryption === "custom") {
-      const profile = JSON.stringify({default_profile: {}}, null, 2);
+    if(playbackEncryption === "custom" && !abrProfile) {
+      const profile = JSON.stringify({default_profile: abrProfileDrm}, null, 2);
       setAbrProfile(profile);
     }
   }, [playbackEncryption]);
