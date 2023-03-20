@@ -1,4 +1,5 @@
 const defaultAbrDrmProfile = require("./profiles/abrProfileDrm.json");
+const defaultAbrClearProfile = require("./profiles/abrProfileClear.json");
 
 /**
  * Manipulate ABR Profile to return only Widevine and
@@ -43,3 +44,4 @@ export const DrmPublicProfile = ({abrProfile}) => {
 };
 
 export const abrProfileDrm = defaultAbrDrmProfile;
+export const abrProfileClear = defaultAbrClearProfile;

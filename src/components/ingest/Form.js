@@ -13,6 +13,98 @@ import ImageIcon from "Components/common/ImageIcon";
 import CloseIcon from "Assets/icons/close";
 import {abrProfileDrm} from "Utils/ABR";
 
+const ErrorMessaging = ({errorTitle, errorMessage}) => {
+  if(!errorTitle && !errorMessage) { return null; }
+
+  return (
+    <div className="form-notification">
+      <InlineNotification
+        type="error"
+        title={errorTitle}
+        message={errorMessage}
+      />
+    </div>
+  );
+};
+
+const HandleRemove = ({index, files, SetFilesCallback}) => {
+  const newFiles = files
+    .slice(0, index)
+    .concat(files.slice(index + 1));
+
+  if(SetFilesCallback && typeof SetFilesCallback === "function") {
+    SetFilesCallback(newFiles);
+  }
+};
+
+const S3Access = ({
+  s3UseAKSecret,
+  s3Url,
+  s3AccessKey,
+  s3Secret,
+  s3PresignedUrl,
+  s3Region
+}) => {
+  let cloudCredentials;
+  let bucket;
+  if(s3UseAKSecret && s3Url) {
+    const s3PrefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+    const s3PrefixMatch = (s3PrefixRegex.exec(s3Url));
+
+    bucket = s3PrefixMatch[1];
+    cloudCredentials = {
+      access_key_id: s3AccessKey,
+      secret_access_key: s3Secret
+    };
+  } else if(s3PresignedUrl) {
+    const httpsPrefixRegex = /^https:\/\/([^/]+)\//i;
+    const httpsPrefixMatch = (httpsPrefixRegex.exec(s3PresignedUrl));
+    bucket = httpsPrefixMatch[1].split(".")[0];
+
+    cloudCredentials = {
+      signed_url: s3PresignedUrl
+    };
+  }
+
+  return [{
+    path_matchers: [".*"],
+    remote_access: {
+      protocol: "s3",
+      platform: "aws",
+      path: `${bucket}/`,
+      storage_endpoint: {
+        region: s3Region
+      },
+      cloud_credentials: cloudCredentials
+    }
+  }];
+};
+
+const SetPlaybackSettings = ({
+  library,
+  type,
+  useMasterAsMez,
+  DisableDrmCallback,
+  SetMezContentTypeCallback,
+  SetAbrProfileCallback
+}) => {
+  const hasDrmCert = library.drmCert;
+  DisableDrmCallback(!hasDrmCert);
+
+  if(type === "MASTER" && useMasterAsMez || type === "MEZ") {
+    const abr = JSON.stringify(library.abr, null, 2) || "";
+    SetAbrProfileCallback(abr);
+    const profile = library.abr && library.abr.default_profile;
+    const mezContentType = library.abr && library.abr.mez_content_type;
+
+    SetMezContentTypeCallback(mezContentType);
+
+    if(!profile || Object.keys(profile).length === 0) {
+      SetAbrProfileCallback(JSON.stringify({default_profile: abrProfileDrm}, null, 2));
+    }
+  }
+};
+
 const Form = observer(() => {
   const [isCreating, setIsCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("message");
@@ -45,31 +137,16 @@ const Form = observer(() => {
   const [s3PresignedUrl, setS3PresignedUrl] = useState();
   const [s3UseAKSecret, setS3UseAKSecret] = useState(false);
 
-  const SetPlaybackSettings = ({libraryId, type}) => {
-    const library = ingestStore.GetLibrary(libraryId);
-    const hasDrmCert = library.drmCert;
-    setDisableDrm(!hasDrmCert);
-
-    if(type === "MASTER" && useMasterAsMez || type === "MEZ") {
-      const abr = JSON.stringify(library.abr, null, 2) || "";
-      setAbrProfile(abr);
-      const profile = library.abr && library.abr.default_profile;
-      const mezContentType = library.abr && library.abr.mez_content_type;
-
-      setMezContentType(mezContentType);
-
-      if(!profile || Object.keys(profile).length === 0) {
-        setAbrProfile(JSON.stringify({default_profile: abrProfileDrm}, null, 2));
-      }
-    }
-  };
-
   useEffect(() => {
     if(!ingestStore.libraries || !ingestStore.GetLibrary(masterLibrary)) { return; }
 
     SetPlaybackSettings({
-      libraryId: masterLibrary,
-      type: "MASTER"
+      library: ingestStore.GetLibrary(masterLibrary),
+      type: "MASTER",
+      useMasterAsMez,
+      DisableDrmCallback: setDisableDrm,
+      SetMezContentTypeCallback: setMezContentType,
+      SetAbrProfileCallback: setAbrProfile
     });
   }, [masterLibrary]);
 
@@ -77,16 +154,14 @@ const Form = observer(() => {
     if(!ingestStore.libraries || !ingestStore.GetLibrary(mezLibrary)) { return; }
 
     SetPlaybackSettings({
-      libraryId: mezLibrary,
-      type: "MEZ"
+      library: ingestStore.GetLibrary(mezLibrary),
+      type: "MEZ",
+      useMasterAsMez,
+      DisableDrmCallback: setDisableDrm,
+      SetMezContentTypeCallback: setMezContentType,
+      SetAbrProfileCallback: setAbrProfile
     });
   }, [mezLibrary]);
-
-  const dropzone = Dropzone({
-    accept: {"audio/*": [], "video/*": []},
-    id: "main-dropzone",
-    onDrop: files => setFiles(files)
-  });
 
   useEffect(() => {
     const hasSizeableFiles = files.some(file => file.size > 0);
@@ -200,42 +275,6 @@ const Form = observer(() => {
     return true;
   };
 
-  const S3Access = () => {
-    let cloudCredentials;
-    let bucket;
-    if(s3UseAKSecret && s3Url) {
-      const s3PrefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
-      const s3PrefixMatch = (s3PrefixRegex.exec(s3Url));
-
-      bucket = s3PrefixMatch[1];
-      cloudCredentials = {
-        access_key_id: s3AccessKey,
-        secret_access_key: s3Secret
-      };
-    } else if(s3PresignedUrl) {
-      const httpsPrefixRegex = /^https:\/\/([^/]+)\//i;
-      const httpsPrefixMatch = (httpsPrefixRegex.exec(s3PresignedUrl));
-      bucket = httpsPrefixMatch[1].split(".")[0];
-
-      cloudCredentials = {
-        signed_url: s3PresignedUrl
-      };
-    }
-
-    return [{
-      path_matchers: [".*"],
-      remote_access: {
-        protocol: "s3",
-        platform: "aws",
-        path: `${bucket}/`,
-        storage_endpoint: {
-          region: s3Region
-        },
-        cloud_credentials: cloudCredentials
-      }
-    }];
-  };
-
   const HandleSubmit = async (event) => {
     event.preventDefault();
     setIsCreating(true);
@@ -243,7 +282,14 @@ const Form = observer(() => {
     let access = [];
     try {
       if(uploadMethod === "s3") {
-        access = S3Access();
+        access = S3Access({
+          s3UseAKSecret,
+          s3Url,
+          s3AccessKey,
+          s3Secret,
+          s3PresignedUrl,
+          s3Region
+        });
       }
 
       let accessGroup = ingestStore.accessGroups[masterGroup] ? ingestStore.accessGroups[masterGroup].address : undefined;
@@ -298,28 +344,6 @@ const Form = observer(() => {
     }
   };
 
-  const ErrorMessaging = () => {
-    if(!errorTitle && !errorMessage) { return null; }
-
-    return (
-      <div className="form-notification">
-        <InlineNotification
-          type="error"
-          title={errorTitle}
-          message={errorMessage}
-        />
-      </div>
-    );
-  };
-
-  const HandleRemove = ({index}) => {
-    const newFiles = files
-      .slice(0, index)
-      .concat(files.slice(index + 1));
-
-    setFiles(newFiles);
-  };
-
   if(masterObjectId) { return <Redirect to={`jobs/${masterObjectId}`} />; }
 
   return (
@@ -327,7 +351,7 @@ const Form = observer(() => {
       <div className="page-container">
         <div className="page__header">Ingest New Media</div>
 
-        { ErrorMessaging() }
+        <ErrorMessaging errorMessage={errorMessage} errorTitle={errorTitle} />
 
         <form className="form" onSubmit={HandleSubmit}>
           <Radio
@@ -350,11 +374,14 @@ const Form = observer(() => {
               }
             ]}
           />
-
           {
             uploadMethod === "local" &&
               <>
-                { dropzone }
+                <Dropzone
+                  accept={{"audio/*": [], "video/*": []}}
+                  id="main-dropzone"
+                  onDrop={files => setFiles(files)}
+                />
                 <label>Files:</label>
                 <div className="file-list">
                   {
@@ -366,7 +393,7 @@ const Form = observer(() => {
                           type="button"
                           title="Remove file"
                           aria-label="Remove file"
-                          onClick={() => HandleRemove({index})}
+                          onClick={() => HandleRemove({index, files, SetFilesCallback: setFiles})}
                           className="file-list__item__close-button"
                         >
                           <ImageIcon className="file-list__item__close-button__icon" icon={CloseIcon} />
