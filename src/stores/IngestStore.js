@@ -15,6 +15,7 @@ class IngestStore {
   loaded;
   jobs;
   job;
+  contentTypes;
   showDialog = false;
   dialog = {
     title: "",
@@ -34,6 +35,10 @@ class IngestStore {
 
   get libraries() {
     return this.libraries;
+  }
+
+  get contentTypes() {
+    return this.contentTypes;
   }
 
   GetLibrary = (libraryId) => {
@@ -191,6 +196,33 @@ class IngestStore {
     throw error;
   }
 
+  LoadDependencies = flow(function * () {
+    try {
+      yield this.LoadLibraries();
+      yield this.LoadAccessGroups();
+      yield this.LoadContentTypes();
+    } finally {
+      this.loaded = true;
+    }
+  });
+
+  LoadContentTypes = flow(function * () {
+    try {
+      if(!this.contentTypes) { this.contentTypes = {}; }
+
+      const loadedTypes = yield this.client.ContentTypes();
+      const sortedTypes = Object.entries(loadedTypes)
+        .sort(([id1, obj1], [id2, obj2]) => (obj1.name || id1).localeCompare(obj2.name || id2))
+        .map(([key, value]) => (
+          [key, {name: value.name || key}]
+        ));
+
+      this.contentTypes = Object.fromEntries(sortedTypes);
+    } catch(error) {
+      console.error("Failed to load content types", error);
+    }
+  });
+
   LoadLibraries = flow(function * () {
     try {
       if(!this.libraries) {
@@ -230,8 +262,6 @@ class IngestStore {
       }
     } catch(error) {
       console.error("Failed to load libraries", error);
-    } finally {
-      this.loaded = true;
     }
   });
 

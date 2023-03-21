@@ -116,14 +116,11 @@ const Form = observer(() => {
   const [files, setFiles] = useState([]);
   const [abrProfile, setAbrProfile] = useState();
   const [masterLibrary, setMasterLibrary] = useState();
-  const [masterGroup, setMasterGroup] = useState();
-  const [masterName, setMasterName] = useState();
+  const [accessGroup, setAccessGroup] = useState();
+  const [name, setName] = useState();
+  const [description, setDescription] = useState();
 
   const [mezLibrary, setMezLibrary] = useState();
-  const [mezGroup, setMezGroup] = useState();
-  const [masterDescription, setMasterDescription] = useState();
-  const [mezName, setMezName] = useState();
-  const [mezDescription, setMezDescription] = useState();
   const [mezContentType, setMezContentType] = useState();
 
   const [displayName, setDisplayName] = useState();
@@ -139,6 +136,22 @@ const Form = observer(() => {
   const [s3Copy, setS3Copy] = useState(false);
   const [s3PresignedUrl, setS3PresignedUrl] = useState();
   const [s3UseAKSecret, setS3UseAKSecret] = useState(false);
+
+  useEffect(() => {
+    const defaultType = Object.keys(ingestStore.contentTypes || {})
+      .find(id => {
+        if(
+          ingestStore.contentTypes[id] &&
+          ingestStore.contentTypes[id].name.toLowerCase().includes("title")
+        ) {
+          return id;
+        }
+      });
+
+    if(defaultType) {
+      setMezContentType(defaultType);
+    }
+  }, [ingestStore.contentTypes]);
 
   useEffect(() => {
     if(!ingestStore.libraries || !ingestStore.GetLibrary(masterLibrary)) { return; }
@@ -189,22 +202,8 @@ const Form = observer(() => {
 
   const mezDetails = (
     <>
-      <h1 className="form__section-header">Mezzanine Object Details</h1>
-      <Input
-        label="Name"
-        formName="mezName"
-        onChange={event => setMezName(event.target.value)}
-        value={mezName}
-      />
-      <Input
-        label="Description"
-        formName="mezDescription"
-        onChange={event => setMezDescription(event.target.value)}
-        value={mezDescription}
-      />
-
       <Select
-        label="Library"
+        label="Mezzanine Library"
         labelDescription="This is the library where your mezzanine object will be created."
         formName="mezLibrary"
         required={true}
@@ -223,26 +222,6 @@ const Form = observer(() => {
         onChange={event => setMezLibrary(event.target.value)}
         value={mezLibrary}
       />
-
-      <Select
-        label="Access Group"
-        labelDescription="This is the Access Group that will manage your mezzanine object."
-        formName="mezGroup"
-        required={false}
-        options={
-          Object.keys(ingestStore.accessGroups || {}).map(accessGroupName => (
-            {
-              label: accessGroupName,
-              value: accessGroupName
-            }
-          ))
-        }
-        defaultOption={{
-          value: "",
-          label: "Select Access Group"
-        }}
-        onChange={event => setMezGroup(event.target.value)}
-      />
     </>
   );
 
@@ -250,7 +229,7 @@ const Form = observer(() => {
     if(
       uploadMethod === "local" && files.length === 0 ||
       !masterLibrary ||
-      !masterName ||
+      !name ||
       !playbackEncryption ||
       playbackEncryption === "custom" && !abrProfile ||
       errorMessage ||
@@ -297,8 +276,7 @@ const Form = observer(() => {
         });
       }
 
-      let accessGroup = ingestStore.accessGroups[masterGroup] ? ingestStore.accessGroups[masterGroup].address : undefined;
-      let mezAccessGroupAddress = useMasterAsMez? accessGroup : ingestStore.accessGroups[mezGroup] ? ingestStore.accessGroups[mezGroup].address : undefined;
+      let accessGroupAddress = ingestStore.accessGroups[accessGroup] ? ingestStore.accessGroups[accessGroup].address : undefined;
 
       let abrMetadata;
       let type;
@@ -320,10 +298,10 @@ const Form = observer(() => {
         formData: {
           master: {
             libraryId: masterLibrary,
-            accessGroup,
+            accessGroup: accessGroupAddress,
             files: uploadMethod === "local" ? files : undefined,
-            title: masterName,
-            description: masterDescription,
+            title: name,
+            description: description,
             s3Url: uploadMethod === "s3" ? s3Url : undefined,
             playbackEncryption,
             access: JSON.stringify(access, null, 2) || "",
@@ -332,9 +310,9 @@ const Form = observer(() => {
           },
           mez: {
             libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
-            accessGroup: mezAccessGroupAddress,
-            name: mezName || masterName,
-            description: useMasterAsMez ? masterDescription : mezDescription,
+            accessGroup: accessGroupAddress,
+            name: name,
+            description: description,
             displayName,
             newObject: !useMasterAsMez
           }
@@ -486,19 +464,18 @@ const Form = observer(() => {
             </>
           }
 
-          <h1 className="form__section-header">Master Object Details</h1>
           <Input
             label="Name"
             required={true}
-            formName="masterName"
-            onChange={event => setMasterName(event.target.value)}
-            value={masterName}
+            formName="name"
+            onChange={event => setName(event.target.value)}
+            value={name}
           />
           <Input
             label="Description"
-            formName="masterDescription"
-            onChange={event => setMasterDescription(event.target.value)}
-            value={masterDescription}
+            formName="description"
+            onChange={event => setDescription(event.target.value)}
+            value={description}
           />
           <Input
             label="Display Name"
@@ -510,7 +487,7 @@ const Form = observer(() => {
           <Select
             label="Access Group"
             labelDescription="This is the Access Group that will manage your master object."
-            formName="masterGroup"
+            formName="accessGroup"
             required={false}
             options={
               Object.keys(ingestStore.accessGroups || {}).map(accessGroupName => (
@@ -524,12 +501,22 @@ const Form = observer(() => {
               value: "",
               label: "Select Access Group"
             }}
-            onChange={event => setMasterGroup(event.target.value)}
+            onChange={event => setAccessGroup(event.target.value)}
+          />
+
+          <Checkbox
+            label="Use Master Object as Mezzanine Object"
+            value={useMasterAsMez}
+            checked={useMasterAsMez}
+            onChange={event => {
+              setMezLibrary(masterLibrary);
+              setUseMasterAsMez(event.target.checked);
+            }}
           />
 
           <Select
             label="Library"
-            labelDescription="This is the library where your master object will be created."
+            labelDescription={useMasterAsMez ? "This is the library where your master and mezzanine object will be created." : "This is the library where your master object will be created."}
             formName="masterLibrary"
             required={true}
             options={
@@ -545,18 +532,6 @@ const Form = observer(() => {
               label: "Select Library"
             }}
             onChange={event => setMasterLibrary(event.target.value)}
-          />
-
-          <Checkbox
-            label="Use Master Object as Mezzanine Object"
-            value={useMasterAsMez}
-            checked={useMasterAsMez}
-            onChange={event => {
-              setMezName(masterName);
-              setMezDescription(masterDescription);
-              setMezLibrary(masterLibrary);
-              setUseMasterAsMez(event.target.checked);
-            }}
           />
 
           { !useMasterAsMez && mezDetails }
@@ -594,12 +569,16 @@ const Form = observer(() => {
             />
           }
 
-          <Input
+          <Select
             label="Mezzanine Content Type"
             labelDescription="This will determine the type for the mezzanine object creation. Enter a valid object ID, version hash, or title."
+            formName="mezContentType"
+            required={true}
+            options={Object.keys(ingestStore.contentTypes || {}).map(typeId => (
+              {value: typeId, label: ingestStore.contentTypes[typeId].name}
+            ))}
             value={mezContentType}
             onChange={event => setMezContentType(event.target.value)}
-            required={true}
           />
 
           <div>
