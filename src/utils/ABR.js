@@ -45,3 +45,4 @@ export const DrmPublicProfile = ({abrProfile}) => {
 
 export const abrProfileDrm = defaultAbrDrmProfile;
 export const abrProfileClear = defaultAbrClearProfile;
+export const abrProfileBoth = defaultAbrClearProfile;
