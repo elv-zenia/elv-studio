@@ -736,17 +736,6 @@ class IngestStore {
     }
     const objectId = createResponse.id;
 
-    this.UpdateIngestObject({
-      id: masterObjectId,
-      data: {
-        ...this.jobs[masterObjectId],
-        mezLibraryId: libraryId,
-        mezObjectId: objectId,
-        mezWriteToken: createResponse.write_token,
-        mezNodeUrl: createResponse.nodeUrl,
-      }
-    });
-
     yield this.WaitForPublish({
       hash: createResponse.hash,
       libraryId,
@@ -764,6 +753,17 @@ class IngestStore {
 
       writeToken = response.writeToken;
       hash = response.hash;
+
+      this.UpdateIngestObject({
+        id: masterObjectId,
+        data: {
+          ...this.jobs[masterObjectId],
+          mezLibraryId: libraryId,
+          mezObjectId: objectId,
+          mezWriteToken: writeToken,
+          mezNodeUrl: response.nodeUrl,
+        }
+      });
     } catch(error) {
       return this.HandleError({
         step: "ingest",
