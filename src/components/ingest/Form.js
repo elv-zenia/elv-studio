@@ -159,8 +159,10 @@ const Form = observer(() => {
 
   useEffect(() => {
     if(playbackEncryption === "custom" && !abrProfile) {
-      const profile = JSON.stringify({default_profile: hasDrmCert ? abrProfileBoth : abrProfileClear}, null, 2);
-      setAbrProfile(profile);
+      SetAbrProfile({
+        profile: {default_profile: hasDrmCert ? abrProfileBoth : abrProfileClear},
+        stringify: true
+      });
     }
   }, [playbackEncryption]);
 
@@ -189,37 +191,58 @@ const Form = observer(() => {
     </>
   );
 
+  const SetAbrProfile = ({profile, stringify=true}) => {
+    const abr = stringify ? JSON.stringify(profile, null, 2) || "" : profile;
+    setAbrProfile(abr);
+  };
+
+  const SetMezContentType = ({type}) => {
+    let contentType;
+
+    if(!type) {
+      contentType = mezContentType || "";
+    } else if(type.startsWith("iq__")) {
+      contentType = type;
+    } else if(type.startsWith("hq__")) {
+      contentType = rootStore.DecodeVersionHash({versionHash: type}).objectId || "";
+    } else if(type.length > 0) {
+      let profileId = Object.keys(ingestStore.contentTypes || {}).find(id => ingestStore.contentTypes[id].name === type);
+      contentType = profileId || "";
+    }
+
+    setMezContentType(contentType);
+  };
+
   const SetPlaybackSettings = ({
     libraryId,
     type
   }) => {
     const library = ingestStore.GetLibrary(libraryId);
-    const hasDrmCert = library.drmCert;
-    setHasDrmCert(hasDrmCert);
+    const libraryHasCert = !!library.drmCert;
+    setHasDrmCert(libraryHasCert);
 
     if(type === "MASTER" && useMasterAsMez || type === "MEZ") {
-      const abr = JSON.stringify(library.abr, null, 2) || "";
-      setAbrProfile(abr);
       const profile = library.abr && library.abr.default_profile;
-      const profileType = library.abr && library.abr.mez_content_type;
 
-      if(profileType) {
-        setMezContentType(profileType);
-      }
+      SetMezContentType({
+        type: library.abr && library.abr.mez_content_type || ""
+      });
 
       if(!profile || Object.keys(profile).length === 0) {
-        setAbrProfile(
-          JSON.stringify({default_profile: hasDrmCert ? abrProfileBoth : abrProfileClear}, null, 2)
-        );
+        SetAbrProfile({
+          profile: {default_profile: libraryHasCert ? abrProfileBoth : abrProfileClear},
+          stringify: true
+        });
 
-        setDisableDrm(!hasDrmCert);
+        setDisableDrm(!libraryHasCert);
         setDisableClear(false);
       } else {
+        SetAbrProfile({profile: library.abr, stringify: true});
         const hasClear = Object.keys(profile.playout_formats || {}).some(formatName => profile.playout_formats[formatName].drm === null);
         const hasDrm = Object.keys(profile.playout_formats || {}).some(formatName => profile.playout_formats[formatName].drm !== null);
 
         setDisableClear(!hasClear);
-        setDisableDrm(!hasDrmCert || !hasDrm);
+        setDisableDrm(!libraryHasCert || !hasDrm);
       }
     }
   };

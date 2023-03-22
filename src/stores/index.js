@@ -53,6 +53,10 @@ class RootStore {
 
     return {ok, returnVal, error};
   });
+
+  DecodeVersionHash = ({versionHash}) => {
+    return this.client.utils.DecodeVersionHash(versionHash);
+  };
 }
 
 export const rootStore = new RootStore();
