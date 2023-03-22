@@ -431,7 +431,7 @@ class IngestStore {
           secret,
           signedUrl,
           copy,
-          encryption: playbackEncryption.includes("drm") ? "cgck" : "none"
+          encryption: "cgck"
         });
 
         // Calculate file size for S3 upload. Local upload has been calculated already
@@ -460,7 +460,7 @@ class IngestStore {
           writeToken,
           fileInfo,
           callback: UploadCallback,
-          encryption: playbackEncryption.includes("drm") ? "cgck" : "none"
+          encryption: "cgck"
         });
       }
     } catch(error) {
@@ -674,6 +674,10 @@ class IngestStore {
         abrProfileExclude = DrmWidevineFairplayProfile({abrProfile});
       } else if(playbackEncryption === "clear") {
         abrProfileExclude = ABR.ProfileExcludeDRM(abrProfile);
+
+        if(abrProfileExclude && abrProfileExclude.result) {
+          abrProfileExclude.result.store_clear = true;
+        }
       }
 
       if(abrProfileExclude.ok) {
