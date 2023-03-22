@@ -196,7 +196,7 @@ const Form = observer(() => {
     setAbrProfile(abr);
   };
 
-  const SetMezContentType = ({type}) => {
+  const SetMezContentType = async ({type}) => {
     let contentType;
 
     if(!type) {
@@ -204,10 +204,9 @@ const Form = observer(() => {
     } else if(type.startsWith("iq__")) {
       contentType = type;
     } else if(type.startsWith("hq__")) {
-      contentType = rootStore.DecodeVersionHash({versionHash: type}).objectId || "";
+      contentType = (await ingestStore.ContentType({versionHash: type})).id || "";
     } else if(type.length > 0) {
-      let profileId = Object.keys(ingestStore.contentTypes || {}).find(id => ingestStore.contentTypes[id].name === type);
-      contentType = profileId || "";
+      contentType = (await ingestStore.ContentType(({name: type}))).id || "";
     }
 
     setMezContentType(contentType);

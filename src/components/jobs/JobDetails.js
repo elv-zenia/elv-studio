@@ -103,52 +103,114 @@ const JobDetails = observer(() => {
   };
 
   const JobInfo = () => {
-    const infoValues = [
+    const separateMasterMez = ingestStore.jobs[jobId].formData.mez.newObject;
+
+    const idPrefix = separateMasterMez ? "master" : "master-mez";
+
+    const masterValues = [
+      {
+        label: separateMasterMez ? "Master" : "Master + Mezzanine",
+        id: `${idPrefix}-header`,
+        value: ""
+      },
+      {
+        label: "ID",
+        id: `${idPrefix}-id`,
+        value: jobId,
+        indent: true
+      },
+      {
+        label: "Library ID",
+        id: `${idPrefix}-library-id`,
+        value: ingestStore.jobs[jobId].masterLibraryId || "",
+        indent: true
+      },
+      {
+        label: "Write Token",
+        id: `${idPrefix}-write-token`,
+        value: ingestStore.jobs[jobId].masterWriteToken || "",
+        copyable: true,
+        indent: true
+      },
+      {
+        label: "Node URL",
+        id: `${idPrefix}-node-url`,
+        value: ingestStore.jobs[jobId].masterNodeUrl || "",
+        indent: true
+      }
+    ];
+
+    const mezValues = [
+      {
+        label: "Mezzanine",
+        id: "mez-header",
+        value: ""
+      },
+      {
+        label: "ID",
+        id: "mez-id",
+        value: ingestStore.jobs[jobId].mezObjectId || "",
+        indent: true
+      },
+      {
+        label: "Library ID",
+        id: "mez-library-id",
+        value: ingestStore.jobs[jobId].mezLibraryId || "",
+        indent: true
+      },
+      {
+        label: "Write Token",
+        id: "mez-write-token",
+        value: ingestStore.jobs[jobId].mezWriteToken || "",
+        copyable: true,
+        indent: true
+      },
+      {
+        label: "Node URL",
+        id: "mez-node-url",
+        value: ingestStore.jobs[jobId].mezNodeUrl || "",
+        indent: true,
+        hidden: !ingestStore.jobs[jobId].mezNodeUrl
+      }
+    ];
+
+    let infoValues = [
       {
         label: "Name",
+        id: "object-name",
         value: ingestStore.jobs[jobId].formData.master.title
       },
       {
         label: "Total File Size",
+        id: "object-total-size",
         value: PrettyBytes(ingestStore.jobs[jobId].size || 0),
         hidden: ingestStore.jobs[jobId].size === undefined
       },
       {
-        label: "ID",
-        value: jobId
-      },
-      {
-        label: "Library ID",
-        value: ingestStore.jobs[jobId].formData.master.libraryId
-      },
-      {
-        label: "Write Token",
-        value: ingestStore.jobs[jobId].writeToken,
-        copyable: true
-      },
-      {
-        label: "Node URL",
-        value: ingestStore.jobs[jobId].nodeUrl
-      },
-      {
         label: "Content Type",
-        value: ingestStore.jobs[jobId].formData.contentType || ""
-      }
+        id: "object-content-type",
+        value: ingestStore.jobs[jobId].contentType || ""
+      },
+      ...masterValues
     ];
+
+    if(separateMasterMez) {
+      infoValues = infoValues.concat(mezValues);
+    }
 
     return (
       <div className="job-details__job-info">
         {
           infoValues
             .filter(item => !item.hidden)
-            .map(({label, value, copyable}) => (
-              <div key={`job-details-${label}`} className="job-details__job-info__row">
+            .map(({label, value, copyable, indent, id}) => (
+              <div key={`job-details-${id}`} className={`job-details__job-info__row${indent ? " job-details__job-info__row--indent" : ""}`}>
                 <span className="job-details__job-info__label">
                   { `${label}:` }
                 </span>
                 <span className="job-details__job-info__value">{ value || "" }</span>
                 {
-                  copyable &&
+                  copyable && value &&
                   <Copyable copy={value} />
                 }
               </div>

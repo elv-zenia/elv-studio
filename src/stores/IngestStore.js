@@ -196,6 +196,10 @@ class IngestStore {
     throw error;
   }
 
+  ContentType = flow(function * ({name, typeId, versionHash}) {
+    return yield this.client.ContentType({name, typeId, versionHash});
+  });
+
   LoadDependencies = flow(function * () {
     try {
       yield this.LoadLibraries();
@@ -321,8 +325,11 @@ class IngestStore {
               runState: "finished"
             },
             size: totalFileSize,
-            writeToken: createResponse.write_token,
-            nodeUrl: createResponse.nodeUrl
+            masterLibraryId: libraryId,
+            masterObjectId: createResponse.id,
+            masterWriteToken: createResponse.write_token,
+            masterNodeUrl: createResponse.nodeUrl,
+            contentType: mezContentType
           }
         });
 
@@ -728,6 +735,17 @@ class IngestStore {
       });
     }
     const objectId = createResponse.id;
+
+    this.UpdateIngestObject({
+      id: masterObjectId,
+      data: {
+        ...this.jobs[masterObjectId],
+        mezLibraryId: libraryId,
+        mezObjectId: objectId,
+        mezWriteToken: createResponse.write_token,
+        mezNodeUrl: createResponse.nodeUrl,
+      }
+    });
 
     yield this.WaitForPublish({
       hash: createResponse.hash,

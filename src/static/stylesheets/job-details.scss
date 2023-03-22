@@ -65,6 +65,10 @@
     &__row {
       display: flex;
       width: 100%;
+
+      &--indent {
+        margin-left: 1.5rem;
+      }
     }
 
     &__label {
