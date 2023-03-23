@@ -3,7 +3,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import ImageIcon from "Components/common/ImageIcon";
 import InfoIcon from "Assets/icons/circle-info.svg";
 
-const Tooltip = ({open, icon, message, side="top", onClick, delayDuration, className=""}) => {
+const Tooltip = ({open, icon, message, side="top", onClick, delayDuration, className="", title=""}) => {
   const TooltipProvider = TooltipPrimitive.Provider;
   const TooltipRoot = TooltipPrimitive.Root;
   const TooltipTrigger = TooltipPrimitive.Trigger;
@@ -17,7 +17,7 @@ const Tooltip = ({open, icon, message, side="top", onClick, delayDuration, class
             <button
               className="tooltip__button"
               type="button"
-              title="Copy to Clipboard"
+              title={title}
               onClick={onClick}
             >
               <ImageIcon className="tooltip__icon" icon={icon || InfoIcon} />

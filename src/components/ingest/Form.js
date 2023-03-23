@@ -99,9 +99,12 @@ const Form = observer(() => {
   const [displayName, setDisplayName] = useState();
   const [playbackEncryption, setPlaybackEncryption] = useState("");
   const [useMasterAsMez, setUseMasterAsMez] = useState(true);
-  const [disableDrm, setDisableDrm] = useState(false);
+
   const [hasDrmCert, setHasDrmCert] = useState(false);
-  const [disableClear, setDisableClear] = useState(false);
+  const [disableDrmAll, setDisableDrmAll] = useState(true);
+  const [disableDrmPublic, setDisableDrmPublic] = useState(true);
+  const [disableDrmRestricted, setDisableDrmRestricted] = useState(true);
+  const [disableClear, setDisableClear] = useState(true);
 
   const [s3Url, setS3Url] = useState();
   const [s3Region, setS3Region] = useState();
@@ -233,15 +236,17 @@ const Form = observer(() => {
           stringify: true
         });
 
-        setDisableDrm(!libraryHasCert);
+        setDisableDrmAll(!libraryHasCert);
+        setDisableDrmPublic(!libraryHasCert);
+        setDisableDrmRestricted(!libraryHasCert);
         setDisableClear(false);
       } else {
         SetAbrProfile({profile: library.abr, stringify: true});
-        const hasClear = Object.keys(profile.playout_formats || {}).some(formatName => profile.playout_formats[formatName].drm === null);
-        const hasDrm = Object.keys(profile.playout_formats || {}).some(formatName => profile.playout_formats[formatName].drm !== null);
 
-        setDisableClear(!hasClear);
-        setDisableDrm(!libraryHasCert || !hasDrm);
+        setDisableClear(!library.abrProfileSupport.clear);
+        setDisableDrmAll(!libraryHasCert || !library.abrProfileSupport.drmAll);
+        setDisableDrmPublic(!libraryHasCert || !library.abrProfileSupport.drmPublic);
+        setDisableDrmRestricted(!libraryHasCert || !library.abrProfileSupport.drmRestricted);
       }
     }
   };
@@ -564,9 +569,9 @@ const Form = observer(() => {
             formName="playbackEncryption"
             required={true}
             options={[
-              {value: "drm-public", label: "DRM - Public Access", disabled: disableDrm},
-              {value: "drm", label: "DRM - All Formats", disabled: disableDrm},
-              {value: "drm-restricted", label: "DRM - Widevine and Fairplay", disabled: disableDrm},
+              {value: "drm-public", label: "DRM - Public Access", disabled: disableDrmPublic, title: "Playout Formats: Dash Widevine, HLS Sample AES, HLS AES-128"},
+              {value: "drm-all", label: "DRM - All Formats", disabled: disableDrmAll, title: "Playout Formats: Dash Widevine, HLS Sample AES, HLS AES-128, HLS Fairplay"},
+              {value: "drm-restricted", label: "DRM - Widevine and Fairplay", disabled: disableDrmRestricted},
               {value: "clear", label: "Clear", disabled: disableClear},
               {value: "custom", label: "Custom"}
             ]}

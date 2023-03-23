@@ -157,6 +157,26 @@ class IngestStore {
     }
   });
 
+  RestrictAbrProfile = ({playbackEncryption, abrProfile}) => {
+    let abrProfileExclude;
+
+    if(playbackEncryption === "drm-all") {
+      abrProfileExclude = ABR.ProfileExcludeClear(abrProfile);
+    } else if(playbackEncryption === "drm-public") {
+      abrProfileExclude = DrmPublicProfile({abrProfile});
+    } else if(playbackEncryption === "drm-restricted") {
+      abrProfileExclude = DrmWidevineFairplayProfile({abrProfile});
+    } else if(playbackEncryption === "clear") {
+      abrProfileExclude = ABR.ProfileExcludeDRM(abrProfile);
+
+      if(abrProfileExclude && abrProfileExclude.result) {
+        abrProfileExclude.result.store_clear = true;
+      }
+    }
+
+    return abrProfileExclude;
+  };
+
   GenerateEmbedUrl = ({versionHash, objectId}) => {
     const networkInfo = rootStore.networkInfo;
     let embedUrl = new URL("https://embed.v3.contentfabric.io");
@@ -248,18 +268,60 @@ class IngestStore {
 
             if(!response) { return; }
 
+            const drmCert = (
+              response.elv &&
+              response.elv.media &&
+              response.elv.media.drm &&
+              response.elv.media.drm.fps &&
+              response.elv.media.drm.fps.cert
+            );
+
+            // Test prep of abr profile to determine
+            // relevant drm formats
+            const abrProfileSupport = {
+              drmAll: false,
+              drmPublic: false,
+              drmRestricted: false,
+              clear: false
+            };
+
+            if(response.abr && response.abr.default_profile) {
+              ["drm-all", "drm-public", "drm-restricted", "clear"].forEach(drmFormat => {
+                const formatSupportMap = {
+                  "drm-all": "drmAll",
+                  "drm-public": "drmPublic",
+                  "drm-restricted": "drmRestricted",
+                  "clear": "clear"
+                };
+
+                const restrictedProfile = this.RestrictAbrProfile({
+                  playbackEncryption: drmFormat,
+                  abrProfile: Object.assign(
+                    {},
+                    response.abr && response.abr.default_profile
+                  )
+                });
+
+                if(
+                  restrictedProfile.ok &&
+                  restrictedProfile.result &&
+                  Object.keys(restrictedProfile.result.playout_formats || {}).length > 0
+                ) {
+                  abrProfileSupport[formatSupportMap[drmFormat]] = true;
+                }
+              });
+            }
+
             loadedLibraries[libraryId] = {
               libraryId,
               name: response.public && response.public.name || libraryId,
               abr: response.abr,
-              drmCert: response.elv &&
-                response.elv.media &&
-                response.elv.media.drm &&
-                response.elv.media.drm.fps &&
-                response.elv.media.drm.fps.cert
+              abrProfileSupport,
+              drmCert
             };
           })
         );
+
         // eslint-disable-next-line no-unused-vars
         const sortedArray = Object.entries(loadedLibraries).sort(([id1, obj1], [id2, obj2]) => obj1.name.localeCompare(obj2.name));
         this.libraries = Object.fromEntries(sortedArray);
@@ -664,21 +726,7 @@ class IngestStore {
     }
 
     if(playbackEncryption !== "custom") {
-      let abrProfileExclude;
-
-      if(playbackEncryption === "drm") {
-        abrProfileExclude = ABR.ProfileExcludeClear(abrProfile);
-      } else if(playbackEncryption === "drm-public") {
-        abrProfileExclude = DrmPublicProfile({abrProfile});
-      } else if(playbackEncryption === "drm-restricted") {
-        abrProfileExclude = DrmWidevineFairplayProfile({abrProfile});
-      } else if(playbackEncryption === "clear") {
-        abrProfileExclude = ABR.ProfileExcludeDRM(abrProfile);
-
-        if(abrProfileExclude && abrProfileExclude.result) {
-          abrProfileExclude.result.store_clear = true;
-        }
-      }
+      let abrProfileExclude = this.RestrictAbrProfile({playbackEncryption, abrProfile});
 
       if(abrProfileExclude.ok) {
         abrProfile = abrProfileExclude.result;

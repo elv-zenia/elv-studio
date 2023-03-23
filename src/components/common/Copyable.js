@@ -25,6 +25,7 @@ export const Copyable = ({copy, children, className}) => {
           open={copied}
           icon={copied ? CheckmarkIcon : CopyIcon}
           delayDuration={300}
+          title="Copy to Clipboard"
         />
       </CopyToClipboard>
     </span>
