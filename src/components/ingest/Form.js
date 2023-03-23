@@ -248,6 +248,8 @@ const Form = observer(() => {
         setDisableDrmPublic(!libraryHasCert || !library.abrProfileSupport.drmPublic);
         setDisableDrmRestricted(!libraryHasCert || !library.abrProfileSupport.drmRestricted);
       }
+
+      setPlaybackEncryption("");
     }
   };
 
