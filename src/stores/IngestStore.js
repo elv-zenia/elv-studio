@@ -305,7 +305,8 @@ class IngestStore {
                 if(
                   restrictedProfile.ok &&
                   restrictedProfile.result &&
-                  Object.keys(restrictedProfile.result.playout_formats || {}).length > 0
+                  Object.keys(restrictedProfile.result.playout_formats || {}).length > 0 &&
+                  Object.values(restrictedProfile.result.playout_formats).some(format => format)
                 ) {
                   abrProfileSupport[formatSupportMap[drmFormat]] = true;
                 }
