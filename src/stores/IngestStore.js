@@ -4,6 +4,7 @@ import UrlJoin from "url-join";
 import {FileInfo} from "Utils/Files";
 import Path from "path";
 import {rootStore} from "./index";
+import {DrmPublicProfile, DrmWidevineFairplayProfile} from "Utils/ABR";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
 const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
@@ -14,6 +15,13 @@ class IngestStore {
   loaded;
   jobs;
   job;
+  contentTypes;
+  showDialog = false;
+  dialog = {
+    title: "",
+    description: ""
+  }
+  dialogResponse = null;
 
   constructor(rootStore) {
     makeAutoObservable(this);
@@ -27,6 +35,10 @@ class IngestStore {
 
   get libraries() {
     return this.libraries;
+  }
+
+  get contentTypes() {
+    return this.contentTypes;
   }
 
   GetLibrary = (libraryId) => {
@@ -49,25 +61,79 @@ class IngestStore {
         currentStep: "",
         upload: {},
         ingest: {},
-        finalize: {}
+        finalize: {},
+        lastUpdatedTime: new Date().toISOString(),
+        active: true
       };
     }
 
+    data.lastUpdatedTime = new Date().toISOString();
     this.jobs[id] = Object.assign(
       this.jobs[id],
       data
     );
-    localStorage.setItem(
-      "elv-jobs",
-      btoa(JSON.stringify(this.jobs))
-    );
+
+    try {
+      localStorage.setItem(
+        "elv-jobs",
+        btoa(JSON.stringify(this.jobs))
+      );
+    } catch(error) {
+      let errorMessage;
+      if(error instanceof DOMException && error.code === 22) {
+        errorMessage = "Storage quota exceeded. Please clear jobs to free up space.";
+      } else {
+        errorMessage = "Unable to store job data.";
+      }
+
+      return this.HandleError({
+        step: "upload",
+        errorMessage,
+        error,
+        id
+      });
+    }
 
     this.UpdateIngestJobs({jobs: this.jobs});
   }
 
-  ClearJobs = () => {
-    this.jobs = {};
-    localStorage.removeItem("elv-jobs");
+  ClearInactiveJobs = () => {
+    const jobs = {};
+    Object.keys(this.jobs).forEach(jobId => {
+      let job = this.jobs[jobId];
+      if(!job.lastUpdatedTime || !job.active) { return; }
+
+      const lastUpdatedDifference = (
+        new Date(new Date().toISOString()).valueOf() - new Date(job.lastUpdatedTime).valueOf()
+      ) / 1000;
+
+      if(lastUpdatedDifference <= 120) {
+        jobs[jobId] = Object.assign({}, job);
+      }
+    });
+
+    this.UpdateIngestJobs({jobs});
+    localStorage.setItem(
+      "elv-jobs",
+      btoa(JSON.stringify(jobs))
+    );
+  }
+
+  ShowWarningDialog = flow(function * ({title, description}) {
+    this.showDialog = true;
+    this.dialog = {
+      title,
+      description
+    };
+
+    return yield new Promise(resolve => {
+      this.dialogResponse = resolve;
+    });
+  });
+
+  HideWarningDialog = (response) => {
+    this.showDialog = false;
+    this.dialogResponse(response);
   }
 
   WaitForPublish = flow (function * ({hash, objectId}) {
@@ -90,6 +156,26 @@ class IngestStore {
       }
     }
   });
+
+  RestrictAbrProfile = ({playbackEncryption, abrProfile}) => {
+    let abrProfileExclude;
+
+    if(playbackEncryption === "drm-all") {
+      abrProfileExclude = ABR.ProfileExcludeClear(abrProfile);
+    } else if(playbackEncryption === "drm-public") {
+      abrProfileExclude = DrmPublicProfile({abrProfile});
+    } else if(playbackEncryption === "drm-restricted") {
+      abrProfileExclude = DrmWidevineFairplayProfile({abrProfile});
+    } else if(playbackEncryption === "clear") {
+      abrProfileExclude = ABR.ProfileExcludeDRM(abrProfile);
+
+      if(abrProfileExclude && abrProfileExclude.result) {
+        abrProfileExclude.result.store_clear = true;
+      }
+    }
+
+    return abrProfileExclude;
+  };
 
   GenerateEmbedUrl = ({versionHash, objectId}) => {
     const networkInfo = rootStore.networkInfo;
@@ -120,17 +206,52 @@ class IngestStore {
           runState: "failed"
         },
         error: true,
-        errorMessage
+        errorMessage,
+        errorLog: typeof error === "object" ? JSON.stringify(error, null, 2) : error,
+        active: false
       }
     });
 
     console.error(errorMessage, error);
+    throw error;
   }
+
+  ContentType = flow(function * ({name, typeId, versionHash}) {
+    return yield this.client.ContentType({name, typeId, versionHash});
+  });
+
+  LoadDependencies = flow(function * () {
+    try {
+      yield this.LoadLibraries();
+      yield this.LoadAccessGroups();
+      yield this.LoadContentTypes();
+    } finally {
+      this.loaded = true;
+    }
+  });
+
+  LoadContentTypes = flow(function * () {
+    try {
+      if(!this.contentTypes) { this.contentTypes = {}; }
+
+      const loadedTypes = yield this.client.ContentTypes();
+      const sortedTypes = Object.entries(loadedTypes)
+        .sort(([id1, obj1], [id2, obj2]) => (obj1.name || id1).localeCompare(obj2.name || id2))
+        .map(([key, value]) => (
+          [key, {name: value.name || key}]
+        ));
+
+      this.contentTypes = Object.fromEntries(sortedTypes);
+    } catch(error) {
+      console.error("Failed to load content types", error);
+    }
+  });
 
   LoadLibraries = flow(function * () {
     try {
       if(!this.libraries) {
         this.libraries = {};
+        let loadedLibraries = {};
 
         const libraryIds = yield this.client.ContentLibraries() || [];
         yield Promise.all(
@@ -147,23 +268,67 @@ class IngestStore {
 
             if(!response) { return; }
 
-            this.libraries[libraryId] = {
+            const drmCert = (
+              response.elv &&
+              response.elv.media &&
+              response.elv.media.drm &&
+              response.elv.media.drm.fps &&
+              response.elv.media.drm.fps.cert
+            );
+
+            // Test prep of abr profile to determine
+            // relevant drm formats
+            const abrProfileSupport = {
+              drmAll: false,
+              drmPublic: false,
+              drmRestricted: false,
+              clear: false
+            };
+
+            if(response.abr && response.abr.default_profile) {
+              ["drm-all", "drm-public", "drm-restricted", "clear"].forEach(drmFormat => {
+                const formatSupportMap = {
+                  "drm-all": "drmAll",
+                  "drm-public": "drmPublic",
+                  "drm-restricted": "drmRestricted",
+                  "clear": "clear"
+                };
+
+                const restrictedProfile = this.RestrictAbrProfile({
+                  playbackEncryption: drmFormat,
+                  abrProfile: Object.assign(
+                    {},
+                    response.abr && response.abr.default_profile
+                  )
+                });
+
+                if(
+                  restrictedProfile.ok &&
+                  restrictedProfile.result &&
+                  Object.keys(restrictedProfile.result.playout_formats || {}).length > 0 &&
+                  Object.values(restrictedProfile.result.playout_formats).some(format => format)
+                ) {
+                  abrProfileSupport[formatSupportMap[drmFormat]] = true;
+                }
+              });
+            }
+
+            loadedLibraries[libraryId] = {
               libraryId,
               name: response.public && response.public.name || libraryId,
               abr: response.abr,
-              drmCert: response.elv &&
-                response.elv.media &&
-                response.elv.media.drm &&
-                response.elv.media.drm.fps &&
-                response.elv.media.drm.fps.cert
+              abrProfileSupport,
+              drmCert
             };
           })
         );
+
+        // eslint-disable-next-line no-unused-vars
+        const sortedArray = Object.entries(loadedLibraries).sort(([id1, obj1], [id2, obj2]) => obj1.name.localeCompare(obj2.name));
+        this.libraries = Object.fromEntries(sortedArray);
       }
     } catch(error) {
       console.error("Failed to load libraries", error);
-    } finally {
-      this.loaded = true;
     }
   });
 
@@ -172,13 +337,15 @@ class IngestStore {
       if(!this.accessGroups) {
         this.accessGroups = {};
         const accessGroups = yield this.client.ListAccessGroups() || [];
-        accessGroups.map(async accessGroup => {
-          if(accessGroup.meta["name"]){
-            this.accessGroups[accessGroup.meta["name"]] = accessGroup;
-          } else {
-            this.accessGroups[accessGroup.id] = accessGroup;
-          }
-        });
+        accessGroups
+          .sort((a, b) => (a.meta.name || a.id).localeCompare(b.meta.name || b.id))
+          .map(async accessGroup => {
+            if(accessGroup.meta["name"]){
+              this.accessGroups[accessGroup.meta["name"]] = accessGroup;
+            } else {
+              this.accessGroups[accessGroup.id] = accessGroup;
+            }
+          });
       }
     } catch(error) {
       console.error("Failed to load access groups", error);
@@ -193,6 +360,12 @@ class IngestStore {
       })
     });
     const createResponse = result.returnVal;
+    formData.contentType = mezContentType;
+    let totalFileSize;
+    if(formData.master.files) {
+      totalFileSize = 0;
+      formData.master.files.forEach(file => totalFileSize += file.size);
+    }
 
     if(result.ok) {
       const visibilityResult = yield rootStore.WrapApiCall({
@@ -213,7 +386,13 @@ class IngestStore {
             create: {
               complete: true,
               runState: "finished"
-            }
+            },
+            size: totalFileSize,
+            masterLibraryId: libraryId,
+            masterObjectId: createResponse.id,
+            masterWriteToken: createResponse.write_token,
+            masterNodeUrl: createResponse.nodeUrl,
+            contentType: mezContentType
           }
         });
 
@@ -232,7 +411,7 @@ class IngestStore {
     title,
     abr,
     accessGroupAddress,
-    playbackEncryption="both",
+    playbackEncryption="clear",
     description,
     s3Url,
     access=[],
@@ -315,7 +494,25 @@ class IngestStore {
           secret,
           signedUrl,
           copy,
-          encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
+          encryption: "cgck"
+        });
+
+        // Calculate file size for S3 upload. Local upload has been calculated already
+        let fileSize;
+        const fileMeta = yield this.client.ContentObjectMetadata({
+          libraryId,
+          objectId: masterObjectId,
+          writeToken,
+          metadataSubtree: `/files/${baseName}`
+        });
+        fileSize = fileMeta["."].size;
+
+        this.UpdateIngestObject({
+          id: masterObjectId,
+          data: {
+            ...this.jobs[masterObjectId],
+            size: fileSize
+          }
         });
       } else {
         const fileInfo = yield FileInfo("", files);
@@ -326,25 +523,7 @@ class IngestStore {
           writeToken,
           fileInfo,
           callback: UploadCallback,
-          encryption: ["both", "drm"].includes(playbackEncryption) ? "cgck" : "none"
-        });
-
-        const filesMetadata = yield this.client.ContentObjectMetadata({
-          libraryId,
-          objectId: masterObjectId,
-          writeToken,
-          metadataSubtree: `/files/${fileInfo[0].path}`
-        });
-
-        this.UpdateIngestObject({
-          id: masterObjectId,
-          data: {
-            ...this.jobs[masterObjectId],
-            upload: {
-              ...this.jobs[masterObjectId].upload,
-              size: (filesMetadata && filesMetadata["."]) ? filesMetadata["."].size : ""
-            }
-          }
+          encryption: "cgck"
         });
       }
     } catch(error) {
@@ -373,11 +552,12 @@ class IngestStore {
     let logs;
     let warnings;
     let errors;
+
     try {
       const response = yield this.client.CallBitcodeMethod({
         libraryId,
         objectId: masterObjectId,
-        writeToken,
+        writeToken: writeToken,
         method: UrlJoin("media", "production_master", "init"),
         body: {
           access
@@ -388,10 +568,11 @@ class IngestStore {
       warnings = response.warnings;
       errors = response.errors;
 
-      if(errors) {
+      if(errors && errors.length) {
         return this.HandleError({
           step: "ingest",
           errorMessage: "Unable to get media information from production master.",
+          error: errors.map(e => e.toString()).join(", "),
           id: masterObjectId
         });
       }
@@ -404,7 +585,7 @@ class IngestStore {
       });
     }
 
-    // Check if audio and video streams
+    // Check for audio and video streams
     try {
       const streams = (yield this.client.ContentObjectMetadata({
         libraryId,
@@ -413,13 +594,32 @@ class IngestStore {
         metadataSubtree: UrlJoin("production_master", "variants", "default", "streams")
       }));
 
+      let unsupportedStreams = [];
+      if(!streams.audio) { unsupportedStreams.push("audio"); }
+      if(!streams.video) { unsupportedStreams.push("video"); }
+
+      if(unsupportedStreams.length > 0) {
+        const response = yield this.ShowWarningDialog({
+          title: "Streams Not Found",
+          description: `No suitable ${unsupportedStreams.join(", ")} streams found in the media file. Would you like to continue the ingest?`
+        });
+
+        if(response === "NO") {
+          return this.HandleError({
+            step: "ingest",
+            errorMessage: "Canceled ingest due to missing streams.",
+            id: masterObjectId
+          });
+        }
+      }
+
       this.UpdateIngestObject({
         id: masterObjectId,
         data: {
           ...this.jobs[masterObjectId],
-          upload: {
-            ...this.jobs[masterObjectId].upload,
-            streams: Object.keys(streams || {})
+          streams: {
+            audio: !!streams.audio,
+            video: !!streams.video
           }
         }
       });
@@ -460,7 +660,7 @@ class IngestStore {
     }
 
     // Create ABR Ladder
-    let {abrProfile, contentTypeId} = yield this.CreateABRLadder({
+    let {abrProfile} = yield this.CreateABRLadder({
       libraryId,
       objectId: masterObjectId,
       writeToken,
@@ -527,13 +727,7 @@ class IngestStore {
     }
 
     if(playbackEncryption !== "custom") {
-      let abrProfileExclude;
-
-      if(playbackEncryption.includes("drm")) {
-        abrProfileExclude = ABR.ProfileExcludeClear(abrProfile);
-      } else if(playbackEncryption === "clear") {
-        abrProfileExclude = ABR.ProfileExcludeDRM(abrProfile);
-      }
+      let abrProfileExclude = this.RestrictAbrProfile({playbackEncryption, abrProfile});
 
       if(abrProfileExclude.ok) {
         abrProfile = abrProfileExclude.result;
@@ -550,7 +744,6 @@ class IngestStore {
     return Object.assign(
       finalizeResponse, {
         abrProfile,
-        contentTypeId,
         access,
         errors: errors || [],
         logs: logs || [],
@@ -613,6 +806,17 @@ class IngestStore {
 
       writeToken = response.writeToken;
       hash = response.hash;
+
+      this.UpdateIngestObject({
+        id: masterObjectId,
+        data: {
+          ...this.jobs[masterObjectId],
+          mezLibraryId: libraryId,
+          mezObjectId: objectId,
+          mezWriteToken: writeToken,
+          mezNodeUrl: response.nodeUrl,
+        }
+      });
     } catch(error) {
       return this.HandleError({
         step: "ingest",
@@ -629,15 +833,31 @@ class IngestStore {
     });
 
     let done;
-    let error;
+    let errorState;
     let statusIntervalId;
-    while(!done && !error) {
-      let status = yield this.client.LROStatus({
-        libraryId,
-        objectId
-      });
+    while(!done && !errorState) {
+      let status;
+      try {
+        status = yield this.client.LROStatus({
+          libraryId,
+          objectId
+        });
+      } catch(error) {
+        errorState = true;
+        if(statusIntervalId) clearInterval(statusIntervalId);
+
+        return this.HandleError({
+          step: "ingest",
+          errorMessage: "Failed to get LRO status.",
+          error,
+          id: masterObjectId
+        });
+      }
 
       if(status === undefined) {
+        errorState = true;
+        if(statusIntervalId) clearInterval(statusIntervalId);
+
         return this.HandleError({
           step: "ingest",
           errorMessage: "Received no job status information from server.",
@@ -655,7 +875,7 @@ class IngestStore {
 
         if(!enhancedStatus.ok) {
           clearInterval(statusIntervalId);
-          error = true;
+          errorState = true;
 
           return this.HandleError({
             step: "ingest",
@@ -722,7 +942,7 @@ class IngestStore {
                       description,
                       created_at: new Date(),
                       playable: true,
-                      has_audio: this.jobs[masterObjectId].upload.streams.includes("audio"),
+                      has_audio: this.jobs[masterObjectId].streams.audio,
                       embed_url: embedUrl,
                       external_url: embedUrl
                     }
@@ -731,6 +951,9 @@ class IngestStore {
               }
             });
           } catch(error) {
+            clearInterval(statusIntervalId);
+            errorState = true;
+
             return this.HandleError({
               step: "ingest",
               errorMessage: "Unable to update metadata with NFT details.",
@@ -749,6 +972,9 @@ class IngestStore {
             try {
               await this.client.AddContentObjectGroupPermission({objectId, groupAddress: accessGroupAddress, permission: "manage"});
             } catch(error) {
+              clearInterval(statusIntervalId);
+              errorState = true;
+
               return this.HandleError({
                 step: "ingest",
                 errorMessage: `Unable to add group permission for group: ${accessGroupAddress}`,
@@ -792,7 +1018,7 @@ class IngestStore {
       const generatedProfile = ABR.ABRProfileForVariant(
         production_master.sources,
         production_master.variants.default,
-        abr.default_profile
+        abr ? abr.default_profile : undefined
       );
 
       if(!generatedProfile.ok) {
@@ -805,8 +1031,7 @@ class IngestStore {
       }
 
       return {
-        abrProfile: generatedProfile.result,
-        contentTypeId: abr.mez_content_type
+        abrProfile: generatedProfile.result
       };
     } catch(error) {
       return this.HandleError({
@@ -833,16 +1058,21 @@ class IngestStore {
         objectId
       });
 
+      const formData = this.jobs[masterObjectId].formData;
+      delete formData.master.abr;
+
       this.UpdateIngestObject({
         id: masterObjectId,
         data: {
           ...this.jobs[masterObjectId],
+          formData,
           finalize: {
             complete: true,
             runState: "finished",
             mezzanineHash: finalizeAbrResponse.hash,
             objectId: finalizeAbrResponse.id
-          }
+          },
+          active: false
         }
       });
     } catch(error) {

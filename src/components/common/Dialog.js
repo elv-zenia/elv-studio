@@ -1,7 +1,27 @@
 import React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 
-const Dialog = ({trigger, title, description, ConfirmCallback}) => {
+const dialogSizes = {
+  "XS": "xs",
+  "SM": "sm",
+  "MD": "md",
+  "LG": "lg"
+};
+
+const Dialog = ({
+  trigger,
+  title,
+  description,
+  ConfirmCallback,
+  CancelCallback,
+  confirmText="Confirm",
+  cancelText="Cancel",
+  hideCancelButton=false,
+  open,
+  onOpenChange,
+  children,
+  size="SM"
+}) => {
   const Dialog = DialogPrimitive.Root;
   const DialogTrigger = DialogPrimitive.Trigger;
   const DialogOverlay = DialogPrimitive.Overlay;
@@ -12,21 +32,30 @@ const Dialog = ({trigger, title, description, ConfirmCallback}) => {
 
   return (
     <div className="dialog">
-      <Dialog>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogTrigger asChild>{ trigger }</DialogTrigger>
         <DialogOverlay className="dialog__overlay">
-          <DialogContent className="dialog__content">
-            <DialogTitle>{ title }</DialogTitle>
-            <DialogDescription>{ description }</DialogDescription>
+          <DialogContent className={`dialog__content dialog__content--${dialogSizes[size]}`}>
+            <DialogTitle className="dialog__content__body__title">{ title }</DialogTitle>
+            <div className="dialog__content__body">
+              {
+                description &&
+                <DialogDescription>{ description }</DialogDescription>
+              }
+              { children }
+            </div>
             <div className="dialog__actions">
-              <DialogClose asChild>
-                <button type="button" className="secondary-button">
-                  Cancel
-                </button>
-              </DialogClose>
+              {
+                !hideCancelButton &&
+                <DialogClose asChild>
+                  <button type="button" className="secondary-button" onClick={CancelCallback}>
+                    { cancelText }
+                  </button>
+                </DialogClose>
+              }
               <DialogClose asChild>
                 <button type="button" className="primary-button" onClick={ConfirmCallback}>
-                  Confirm
+                  { confirmText }
                 </button>
               </DialogClose>
             </div>

@@ -3,14 +3,44 @@
     background-color: #fff;
     border-radius: 6px;
     box-shadow: rgb(14 18 22 / 35%) 0 10px 38px -10px, rgb(14 18 22 / 20%) 0 10px 20px -15px;
+    display: flex;
+    flex-direction: column;
     left: 50%;
-    max-height: 85vh;
-    max-width: 450px;
     padding: 30px;
     position: fixed;
     top: 50%;
     transform: translate(-50%, -50%);
     width: 90vw;
+
+    &__body {
+      height: 100%;
+      overflow-y: auto;
+
+      &__title {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+      }
+    }
+
+    &--xs {
+      max-height: 48%;
+      max-width: 24%;
+    }
+
+    &--sm {
+      max-height: 72%;
+      max-width: 36%;
+    }
+
+    &--md {
+      max-height: 84%;
+      max-width: 48%;
+    }
+
+    &--lg {
+      max-height: 96%;
+      max-width: 72%;
+    }
   }
 
   &__overlay {

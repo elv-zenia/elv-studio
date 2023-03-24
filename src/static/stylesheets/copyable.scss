@@ -4,13 +4,20 @@
   align-items: center;
   display: flex;
 
-  & > div {
+  &__text,
+  &__tooltip {
     -ms-flex-positive: 1;
     -webkit-box-flex: 1;
-    flex-grow: 1;
-    max-width: 560px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  &__text {
+    flex-grow: 1;
+  }
+
+  &__tooltip {
+    margin-left: 0.5rem;
   }
 }

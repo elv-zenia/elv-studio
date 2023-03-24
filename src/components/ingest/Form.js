@@ -6,11 +6,79 @@ import Dropzone from "Components/common/Dropzone";
 import FabricLoader from "Components/FabricLoader";
 import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components/common/Inputs";
 import {Redirect} from "react-router-dom";
-import {abrProfileClear, abrProfileDrm, abrProfileRestrictedDrm, s3Regions} from "Utils";
+import {s3Regions} from "Utils";
 import PrettyBytes from "pretty-bytes";
 import InlineNotification from "Components/common/InlineNotification";
 import ImageIcon from "Components/common/ImageIcon";
 import CloseIcon from "Assets/icons/close";
+import {abrProfileClear, abrProfileBoth} from "Utils/ABR";
+
+const ErrorMessaging = ({errorTitle, errorMessage}) => {
+  if(!errorTitle && !errorMessage) { return null; }
+
+  return (
+    <div className="form-notification">
+      <InlineNotification
+        type="error"
+        title={errorTitle}
+        message={errorMessage}
+      />
+    </div>
+  );
+};
+
+const HandleRemove = ({index, files, SetFilesCallback}) => {
+  const newFiles = files
+    .slice(0, index)
+    .concat(files.slice(index + 1));
+
+  if(SetFilesCallback && typeof SetFilesCallback === "function") {
+    SetFilesCallback(newFiles);
+  }
+};
+
+const S3Access = ({
+  s3UseAKSecret,
+  s3Url,
+  s3AccessKey,
+  s3Secret,
+  s3PresignedUrl,
+  s3Region
+}) => {
+  let cloudCredentials;
+  let bucket;
+  if(s3UseAKSecret && s3Url) {
+    const s3PrefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
+    const s3PrefixMatch = (s3PrefixRegex.exec(s3Url));
+
+    bucket = s3PrefixMatch[1];
+    cloudCredentials = {
+      access_key_id: s3AccessKey,
+      secret_access_key: s3Secret
+    };
+  } else if(s3PresignedUrl) {
+    const httpsPrefixRegex = /^https:\/\/([^/]+)\//i;
+    const httpsPrefixMatch = (httpsPrefixRegex.exec(s3PresignedUrl));
+    bucket = httpsPrefixMatch[1].split(".")[0];
+
+    cloudCredentials = {
+      signed_url: s3PresignedUrl
+    };
+  }
+
+  return [{
+    path_matchers: [".*"],
+    remote_access: {
+      protocol: "s3",
+      platform: "aws",
+      path: `${bucket}/`,
+      storage_endpoint: {
+        region: s3Region
+      },
+      cloud_credentials: cloudCredentials
+    }
+  }];
+};
 
 const Form = observer(() => {
   const [isCreating, setIsCreating] = useState(false);
@@ -21,20 +89,22 @@ const Form = observer(() => {
   const [files, setFiles] = useState([]);
   const [abrProfile, setAbrProfile] = useState();
   const [masterLibrary, setMasterLibrary] = useState();
-  const [masterGroup, setMasterGroup] = useState();
-  const [masterName, setMasterName] = useState();
+  const [accessGroup, setAccessGroup] = useState();
+  const [name, setName] = useState();
+  const [description, setDescription] = useState();
 
   const [mezLibrary, setMezLibrary] = useState();
-  const [mezGroup, setMezGroup] = useState();
-  const [masterDescription, setMasterDescription] = useState();
-  const [mezName, setMezName] = useState();
-  const [mezDescription, setMezDescription] = useState();
   const [mezContentType, setMezContentType] = useState();
 
   const [displayName, setDisplayName] = useState();
   const [playbackEncryption, setPlaybackEncryption] = useState("");
   const [useMasterAsMez, setUseMasterAsMez] = useState(true);
-  const [disableDrm, setDisableDrm] = useState(false);
+
+  const [hasDrmCert, setHasDrmCert] = useState(false);
+  const [disableDrmAll, setDisableDrmAll] = useState(true);
+  const [disableDrmPublic, setDisableDrmPublic] = useState(true);
+  const [disableDrmRestricted, setDisableDrmRestricted] = useState(true);
+  const [disableClear, setDisableClear] = useState(true);
 
   const [s3Url, setS3Url] = useState();
   const [s3Region, setS3Region] = useState();
@@ -44,31 +114,28 @@ const Form = observer(() => {
   const [s3PresignedUrl, setS3PresignedUrl] = useState();
   const [s3UseAKSecret, setS3UseAKSecret] = useState(false);
 
-  const SetPlaybackSettings = ({libraryId, type}) => {
-    const library = ingestStore.GetLibrary(libraryId);
-    const hasDrmCert = library.drmCert;
-    setDisableDrm(!hasDrmCert);
+  useEffect(() => {
+    const defaultType = Object.keys(ingestStore.contentTypes || {})
+      .find(id => {
+        if(
+          ingestStore.contentTypes[id] &&
+          ingestStore.contentTypes[id].name.toLowerCase().includes("title")
+        ) {
+          return id;
+        }
+      });
 
-    if(type === "master" && useMasterAsMez || type === "mez") {
-      const abr = JSON.stringify(library.abr, null, 2) || "";
-      setAbrProfile(abr);
-      const profile = library.abr && library.abr.default_profile;
-      const mezContentType = library.abr && library.abr.mez_content_type;
-
-      setMezContentType(mezContentType);
-
-      if(!profile || Object.keys(profile).length === 0) {
-        setAbrProfile(JSON.stringify({default_profile: {}}, null, 2));
-      }
+    if(defaultType) {
+      setMezContentType(defaultType);
     }
-  };
+  }, [ingestStore.contentTypes]);
 
   useEffect(() => {
     if(!ingestStore.libraries || !ingestStore.GetLibrary(masterLibrary)) { return; }
 
     SetPlaybackSettings({
       libraryId: masterLibrary,
-      type: "master"
+      type: "MASTER"
     });
   }, [masterLibrary]);
 
@@ -77,15 +144,9 @@ const Form = observer(() => {
 
     SetPlaybackSettings({
       libraryId: mezLibrary,
-      type: "mez"
+      type: "MEZ"
     });
   }, [mezLibrary]);
-
-  const dropzone = Dropzone({
-    accept: {"audio/*": [], "video/*": []},
-    id: "main-dropzone",
-    onDrop: files => setFiles(files)
-  });
 
   useEffect(() => {
     const hasSizeableFiles = files.some(file => file.size > 0);
@@ -100,45 +161,18 @@ const Form = observer(() => {
   }, [files]);
 
   useEffect(() => {
-    const SetProfile = (abr) => {
-      const profile = JSON.stringify({default_profile: abr}, null, 2);
-      setAbrProfile(profile);
-    };
-
-    switch(playbackEncryption) {
-      case "drm-restricted":
-        SetProfile(abrProfileRestrictedDrm);
-        break;
-      case "drm":
-        SetProfile(abrProfileDrm);
-        break;
-      case "clear":
-        SetProfile(abrProfileClear);
-        break;
-      case "custom":
-      default:
-        break;
+    if(playbackEncryption === "custom" && !abrProfile) {
+      SetAbrProfile({
+        profile: {default_profile: hasDrmCert ? abrProfileBoth : abrProfileClear},
+        stringify: true
+      });
     }
   }, [playbackEncryption]);
 
   const mezDetails = (
     <>
-      <h1 className="form__section-header">Mezzanine Object Details</h1>
-      <Input
-        label="Name"
-        formName="mezName"
-        onChange={event => setMezName(event.target.value)}
-        value={mezName}
-      />
-      <Input
-        label="Description"
-        formName="mezDescription"
-        onChange={event => setMezDescription(event.target.value)}
-        value={mezDescription}
-      />
-
       <Select
-        label="Library"
+        label="Mezzanine Library"
         labelDescription="This is the library where your mezzanine object will be created."
         formName="mezLibrary"
         required={true}
@@ -157,38 +191,78 @@ const Form = observer(() => {
         onChange={event => setMezLibrary(event.target.value)}
         value={mezLibrary}
       />
-
-      <Select
-        label="Access Group"
-        labelDescription="This is the Access Group that will manage your mezzanine object."
-        formName="mezGroup"
-        required={false}
-        options={
-          Object.keys(ingestStore.accessGroups || {}).map(accessGroupName => (
-            {
-              label: accessGroupName,
-              value: accessGroupName
-            }
-          ))
-        }
-        defaultOption={{
-          value: "",
-          label: "Select Access Group"
-        }}
-        onChange={event => setMezGroup(event.target.value)}
-      />
     </>
   );
+
+  const SetAbrProfile = ({profile, stringify=true}) => {
+    const abr = stringify ? JSON.stringify(profile, null, 2) || "" : profile;
+    setAbrProfile(abr);
+  };
+
+  const SetMezContentType = async ({type}) => {
+    let contentType;
+
+    if(!type) {
+      contentType = mezContentType || "";
+    } else if(type.startsWith("iq__")) {
+      contentType = type;
+    } else if(type.startsWith("hq__")) {
+      contentType = (await ingestStore.ContentType({versionHash: type})).id || "";
+    } else if(type.length > 0) {
+      contentType = (await ingestStore.ContentType(({name: type}))).id || "";
+    }
+
+    setMezContentType(contentType);
+  };
+
+  const SetPlaybackSettings = ({
+    libraryId,
+    type
+  }) => {
+    const library = ingestStore.GetLibrary(libraryId);
+    const libraryHasCert = !!library.drmCert;
+    setHasDrmCert(libraryHasCert);
+
+    if(type === "MASTER" && useMasterAsMez || type === "MEZ") {
+      const profile = library.abr && library.abr.default_profile;
+
+      SetMezContentType({
+        type: library.abr && library.abr.mez_content_type || ""
+      });
+
+      if(!profile || Object.keys(profile).length === 0) {
+        SetAbrProfile({
+          profile: {default_profile: libraryHasCert ? abrProfileBoth : abrProfileClear},
+          stringify: true
+        });
+
+        setDisableDrmAll(!libraryHasCert);
+        setDisableDrmPublic(!libraryHasCert);
+        setDisableDrmRestricted(!libraryHasCert);
+        setDisableClear(false);
+      } else {
+        SetAbrProfile({profile: library.abr, stringify: true});
+
+        setDisableClear(!library.abrProfileSupport.clear);
+        setDisableDrmAll(!libraryHasCert || !library.abrProfileSupport.drmAll);
+        setDisableDrmPublic(!libraryHasCert || !library.abrProfileSupport.drmPublic);
+        setDisableDrmRestricted(!libraryHasCert || !library.abrProfileSupport.drmRestricted);
+      }
+
+      setPlaybackEncryption("");
+    }
+  };
 
   const ValidForm = () => {
     if(
       uploadMethod === "local" && files.length === 0 ||
       !masterLibrary ||
-      !masterName ||
+      !name ||
       !playbackEncryption ||
       playbackEncryption === "custom" && !abrProfile ||
       errorMessage ||
-      errorTitle
+      errorTitle ||
+      !mezContentType
     ) {
       return false;
     }
@@ -220,101 +294,65 @@ const Form = observer(() => {
     let access = [];
     try {
       if(uploadMethod === "s3") {
-        let cloudCredentials;
-        let bucket;
-        if(s3UseAKSecret && s3Url) {
-          const s3PrefixRegex = /^s3:\/\/([^/]+)\//i; // for matching and extracting bucket name when full s3:// path is specified
-          const s3PrefixMatch = (s3PrefixRegex.exec(s3Url));
-
-          bucket = s3PrefixMatch[1];
-          cloudCredentials = {
-            access_key_id: s3AccessKey,
-            secret_access_key: s3Secret
-          };
-        } else if(s3PresignedUrl) {
-          const httpsPrefixRegex = /^https:\/\/([^/]+)\//i;
-          const httpsPrefixMatch = (httpsPrefixRegex.exec(s3PresignedUrl));
-          bucket = httpsPrefixMatch[1].split(".")[0];
-
-          cloudCredentials = {
-            signed_url: s3PresignedUrl
-          };
-        }
-
-        access = [{
-          path_matchers: [".*"],
-          remote_access: {
-            protocol: "s3",
-            platform: "aws",
-            path: `${bucket}/`,
-            storage_endpoint: {
-              region: s3Region
-            },
-            cloud_credentials: cloudCredentials
-          }
-        }];
+        access = S3Access({
+          s3UseAKSecret,
+          s3Url,
+          s3AccessKey,
+          s3Secret,
+          s3PresignedUrl,
+          s3Region
+        });
       }
 
-      let accessGroup = ingestStore.accessGroups[masterGroup] ? ingestStore.accessGroups[masterGroup].address : undefined;
-      let mezAccessGroupAddress = useMasterAsMez? accessGroup : ingestStore.accessGroups[mezGroup] ? ingestStore.accessGroups[mezGroup].address : undefined;
-      const abrMetadata = JSON.stringify({
-        ...JSON.parse(abrProfile),
-        mez_content_type: mezContentType
-      }, null, 2);
+      let accessGroupAddress = ingestStore.accessGroups[accessGroup] ? ingestStore.accessGroups[accessGroup].address : undefined;
 
-      const createResponse = await ingestStore.CreateContentObject({
+      let abrMetadata;
+      let type;
+      if(playbackEncryption === "custom") {
+        abrMetadata = JSON.stringify({
+          ...JSON.parse(abrProfile),
+          mez_content_type: mezContentType
+        }, null, 2);
+
+        type = JSON.parse(abrMetadata).mez_content_type;
+      } else {
+        abrMetadata = abrProfile;
+        type = mezContentType;
+      }
+
+      let createParams = {
         libraryId: masterLibrary,
-        mezContentType: mezContentType || JSON.parse(abrMetadata).mez_content_type,
+        mezContentType: type,
         formData: {
           master: {
-            abr: abrMetadata,
             libraryId: masterLibrary,
-            accessGroup,
+            accessGroup: accessGroupAddress,
             files: uploadMethod === "local" ? files : undefined,
-            title: masterName,
-            description: masterDescription,
+            title: name,
+            description: description,
             s3Url: uploadMethod === "s3" ? s3Url : undefined,
             playbackEncryption,
             access: JSON.stringify(access, null, 2) || "",
-            copy: s3Copy
+            copy: s3Copy,
+            abr: abrMetadata
           },
           mez: {
             libraryId: useMasterAsMez ? masterLibrary : mezLibrary,
-            accessGroup: mezAccessGroupAddress,
-            name: mezName || masterName,
-            description: useMasterAsMez ? masterDescription : mezDescription,
+            accessGroup: accessGroupAddress,
+            name: name,
+            description: description,
             displayName,
             newObject: !useMasterAsMez
           }
         }
-      });
+      };
+
+      const createResponse = await ingestStore.CreateContentObject(createParams);
 
       setMasterObjectId(createResponse.id);
     } finally {
       setIsCreating(false);
     }
-  };
-
-  const ErrorMessaging = () => {
-    if(!errorTitle && !errorMessage) { return null; }
-
-    return (
-      <div className="form-notification">
-        <InlineNotification
-          type="error"
-          title={errorTitle}
-          message={errorMessage}
-        />
-      </div>
-    );
-  };
-
-  const HandleRemove = ({index}) => {
-    const newFiles = files
-      .slice(0, index)
-      .concat(files.slice(index + 1));
-
-    setFiles(newFiles);
   };
 
   if(masterObjectId) { return <Redirect to={`jobs/${masterObjectId}`} />; }
@@ -324,7 +362,7 @@ const Form = observer(() => {
       <div className="page-container">
         <div className="page__header">Ingest New Media</div>
 
-        { ErrorMessaging() }
+        <ErrorMessaging errorMessage={errorMessage} errorTitle={errorTitle} />
 
         <form className="form" onSubmit={HandleSubmit}>
           <Radio
@@ -347,11 +385,14 @@ const Form = observer(() => {
               }
             ]}
           />
-
           {
             uploadMethod === "local" &&
               <>
-                { dropzone }
+                <Dropzone
+                  accept={{"audio/*": [], "video/*": []}}
+                  id="main-dropzone"
+                  onDrop={files => setFiles(files)}
+                />
                 <label>Files:</label>
                 <div className="file-list">
                   {
@@ -363,7 +404,7 @@ const Form = observer(() => {
                           type="button"
                           title="Remove file"
                           aria-label="Remove file"
-                          onClick={() => HandleRemove({index})}
+                          onClick={() => HandleRemove({index, files, SetFilesCallback: setFiles})}
                           className="file-list__item__close-button"
                         >
                           <ImageIcon className="file-list__item__close-button__icon" icon={CloseIcon} />
@@ -451,19 +492,18 @@ const Form = observer(() => {
             </>
           }
 
-          <h1 className="form__section-header">Master Object Details</h1>
           <Input
             label="Name"
             required={true}
-            formName="masterName"
-            onChange={event => setMasterName(event.target.value)}
-            value={masterName}
+            formName="name"
+            onChange={event => setName(event.target.value)}
+            value={name}
           />
           <Input
             label="Description"
-            formName="masterDescription"
-            onChange={event => setMasterDescription(event.target.value)}
-            value={masterDescription}
+            formName="description"
+            onChange={event => setDescription(event.target.value)}
+            value={description}
           />
           <Input
             label="Display Name"
@@ -475,7 +515,7 @@ const Form = observer(() => {
           <Select
             label="Access Group"
             labelDescription="This is the Access Group that will manage your master object."
-            formName="masterGroup"
+            formName="accessGroup"
             required={false}
             options={
               Object.keys(ingestStore.accessGroups || {}).map(accessGroupName => (
@@ -489,12 +529,22 @@ const Form = observer(() => {
               value: "",
               label: "Select Access Group"
             }}
-            onChange={event => setMasterGroup(event.target.value)}
+            onChange={event => setAccessGroup(event.target.value)}
+          />
+
+          <Checkbox
+            label="Use Master Object as Mezzanine Object"
+            value={useMasterAsMez}
+            checked={useMasterAsMez}
+            onChange={event => {
+              setMezLibrary(masterLibrary);
+              setUseMasterAsMez(event.target.checked);
+            }}
           />
 
           <Select
             label="Library"
-            labelDescription="This is the library where your master object will be created."
+            labelDescription={useMasterAsMez ? "This is the library where your master and mezzanine object will be created." : "This is the library where your master object will be created."}
             formName="masterLibrary"
             required={true}
             options={
@@ -512,30 +562,19 @@ const Form = observer(() => {
             onChange={event => setMasterLibrary(event.target.value)}
           />
 
-          <Checkbox
-            label="Use Master Object as Mezzanine Object"
-            value={useMasterAsMez}
-            checked={useMasterAsMez}
-            onChange={event => {
-              setMezName(masterName);
-              setMezDescription(masterDescription);
-              setMezLibrary(masterLibrary);
-              setUseMasterAsMez(event.target.checked);
-            }}
-          />
-
           { !useMasterAsMez && mezDetails }
 
           <h1 className="form__section-header">Playback Settings</h1>
           <Select
             label="Playback Encryption"
-            labelDescription="Select a playback encryption option. Enable Clear or Digital Rights Management copy protection during playback. Restricted DRM will have only Widevine and Fairplay options. To configure the ABR profile entirely, use the Custom option."
+            labelDescription="Select a playback encryption option. Enable Clear or Digital Rights Management (DRM) copy protection during playback. To configure the ABR profile entirely, use the Custom option."
             formName="playbackEncryption"
             required={true}
             options={[
-              {value: "drm", label: "Digital Rights Management (all formats)", disabled: disableDrm},
-              {value: "drm-restricted", label: "Digital Rights Management (restricted)", disabled: disableDrm},
-              {value: "clear", label: "Clear"},
+              {value: "drm-public", label: "DRM - Public Access", disabled: disableDrmPublic, title: "Playout Formats: Dash Widevine, HLS Sample AES, HLS AES-128"},
+              {value: "drm-all", label: "DRM - All Formats", disabled: disableDrmAll, title: "Playout Formats: Dash Widevine, HLS Sample AES, HLS AES-128, HLS Fairplay"},
+              {value: "drm-restricted", label: "DRM - Widevine and Fairplay", disabled: disableDrmRestricted},
+              {value: "clear", label: "Clear", disabled: disableClear},
               {value: "custom", label: "Custom"}
             ]}
             defaultOption={{
@@ -558,12 +597,16 @@ const Form = observer(() => {
             />
           }
 
-          <Input
+          <Select
             label="Mezzanine Content Type"
             labelDescription="This will determine the type for the mezzanine object creation. Enter a valid object ID, version hash, or title."
+            formName="mezContentType"
+            required={true}
+            options={Object.keys(ingestStore.contentTypes || {}).map(typeId => (
+              {value: typeId, label: ingestStore.contentTypes[typeId].name}
+            ))}
             value={mezContentType}
             onChange={event => setMezContentType(event.target.value)}
-            required={true}
           />
 
           <div>

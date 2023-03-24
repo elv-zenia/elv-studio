@@ -1,7 +1,7 @@
 .inline-notification {
-  align-items: center;
+  color: $black;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   font-size: 0.9rem;
   margin-bottom: 1rem;
   padding: 1rem;
@@ -24,17 +24,40 @@
     border-left: 4px solid $blue;
   }
 
-  &__title {
-    font-weight: 700;
-    padding-right: 0.5rem;
+  &__main {
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+
+    &__title {
+      font-weight: 700;
+      padding-right: 0.5rem;
+    }
+
+    &__right-container {
+      display: flex;
+      margin-left: auto;
+
+      &__action {
+        color: $blue;
+        margin-right: 1rem;
+      }
+
+      &__close-button {
+        align-items: center;
+        display: flex;
+        justify-content: center;
+
+        &__icon {
+          height: 17px;
+          width: 17px;
+        }
+      }
+    }
   }
 
-  &__close-button {
-    margin-left: auto;
-
-    &__icon {
-      height: 17px;
-      width: 17px;
-    }
+  &__subtext {
+    font-size: 0.85rem;
+    white-space: pre-line;
   }
 }

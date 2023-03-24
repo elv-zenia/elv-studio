@@ -1,4 +1,4 @@
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import {useRouteMatch} from "react-router-dom";
 import {observer} from "mobx-react";
 import PrettyBytes from "pretty-bytes";
@@ -9,8 +9,12 @@ import {PageLoader} from "Components/common/Loader";
 import {Copyable} from "Components/common/Copyable";
 import CheckmarkIcon from "Assets/icons/check.svg";
 import LoadingIcon from "Assets/icons/loading.gif";
+import InlineNotification from "Components/common/InlineNotification";
+import Dialog from "Components/common/Dialog";
+import JSONView from "Components/common/JSONView";
 
 const JobDetails = observer(() => {
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
   const match = useRouteMatch();
   const jobId = match.params.id;
 
@@ -36,6 +40,7 @@ const JobDetails = observer(() => {
 
     const {abr, access, copy, files, libraryId, title, accessGroup, description, s3Url, writeToken, playbackEncryption} = ingestStore.job.formData.master;
     const mezFormData = ingestStore.job.formData.mez;
+    const {contentType} = ingestStore.job.formData;
 
     const response = await ingestStore.CreateProductionMaster({
       libraryId,
@@ -43,7 +48,7 @@ const JobDetails = observer(() => {
       title,
       description,
       s3Url,
-      abr: JSON.parse(abr),
+      abr: abr ? JSON.parse(abr) : undefined,
       accessGroupAddress: accessGroup,
       access: JSON.parse(access),
       copy,
@@ -67,7 +72,7 @@ const JobDetails = observer(() => {
       masterObjectId: response.id,
       masterVersionHash: response.hash,
       abrProfile: response.abrProfile,
-      type: response.contentTypeId,
+      type: contentType,
       name: mezFormData.name,
       accessGroupAddress: mezFormData.accessGroup,
       description: mezFormData.description,
@@ -79,15 +84,193 @@ const JobDetails = observer(() => {
 
   if(!ingestStore.job) { return <PageLoader />; }
 
-  const DisplayError = () => {
+  const ErrorNotification = () => {
     if(!ingestStore.jobs[jobId].error) { return null; }
 
     const fallbackErrorMessage = "Unable to create media playable object.";
 
     return (
       <div className="job-details__error">
-        { ingestStore.jobs[jobId].errorMessage || fallbackErrorMessage }
+        <InlineNotification
+          type="error"
+          message={ingestStore.jobs[jobId].errorMessage || fallbackErrorMessage}
+          hideCloseButton={true}
+          actionText={ingestStore.jobs[jobId].errorLog ?  "Learn More" : undefined}
+          ActionCallback={() => setShowErrorDialog(true)}
+        />
       </div>
+    );
+  };
+
+  const JobInfo = () => {
+    const separateMasterMez = ingestStore.jobs[jobId].formData.mez.newObject;
+
+    const idPrefix = separateMasterMez ? "master" : "master-mez";
+
+    const masterValues = [
+      {
+        label: separateMasterMez ? "Master" : "Master + Mezzanine",
+        id: `${idPrefix}-header`,
+        value: ""
+      },
+      {
+        label: "ID",
+        id: `${idPrefix}-id`,
+        value: jobId,
+        indent: true
+      },
+      {
+        label: "Library ID",
+        id: `${idPrefix}-library-id`,
+        value: ingestStore.jobs[jobId].masterLibraryId || "",
+        indent: true
+      },
+      {
+        label: "Write Token",
+        id: `${idPrefix}-write-token`,
+        value: ingestStore.jobs[jobId].masterWriteToken || "",
+        copyable: true,
+        indent: true
+      },
+      {
+        label: "Node URL",
+        id: `${idPrefix}-node-url`,
+        value: ingestStore.jobs[jobId].masterNodeUrl || "",
+        indent: true
+      }
+    ];
+
+    const mezValues = [
+      {
+        label: "Mezzanine",
+        id: "mez-header",
+        value: ""
+      },
+      {
+        label: "ID",
+        id: "mez-id",
+        value: ingestStore.jobs[jobId].mezObjectId || "",
+        indent: true
+      },
+      {
+        label: "Library ID",
+        id: "mez-library-id",
+        value: ingestStore.jobs[jobId].mezLibraryId || "",
+        indent: true
+      },
+      {
+        label: "Write Token",
+        id: "mez-write-token",
+        value: ingestStore.jobs[jobId].mezWriteToken || "",
+        copyable: true,
+        indent: true
+      },
+      {
+        label: "Node URL",
+        id: "mez-node-url",
+        value: ingestStore.jobs[jobId].mezNodeUrl || "",
+        indent: true,
+        hidden: !ingestStore.jobs[jobId].mezNodeUrl
+      }
+    ];
+
+    let infoValues = [
+      {
+        label: "Name",
+        id: "object-name",
+        value: ingestStore.jobs[jobId].formData.master.title
+      },
+      {
+        label: "Total File Size",
+        id: "object-total-size",
+        value: PrettyBytes(ingestStore.jobs[jobId].size || 0),
+        hidden: ingestStore.jobs[jobId].size === undefined
+      },
+      {
+        label: "Content Type",
+        id: "object-content-type",
+        value: ingestStore.jobs[jobId].contentType || ""
+      },
+      ...masterValues
+    ];
+
+    if(separateMasterMez) {
+      infoValues = infoValues.concat(mezValues);
+    }
+
+    return (
+      <div className="job-details__job-info">
+        {
+          infoValues
+            .filter(item => !item.hidden)
+            .map(({label, value, copyable, indent, id}) => (
+              <div key={`job-details-${id}`} className={`job-details__job-info__row${indent ? " job-details__job-info__row--indent" : ""}`}>
+                <span className="job-details__job-info__label">
+                  { `${label}:` }
+                </span>
+                <span className="job-details__job-info__value">{ value || "" }</span>
+                {
+                  copyable && value &&
+                  <Copyable copy={value} />
+                }
+              </div>
+            ))
+        }
+      </div>
+    );
+  };
+
+  const FinalizeInfo = () => {
+    if(!ingestStore.jobs[jobId].finalize.mezzanineHash) { return null; }
+
+    return (
+      <>
+        <h1 className="job-details__section-header">Mezzanine Object Details</h1>
+        <div className="job-details__card job-details__card--secondary">
+          <div className="job-details__card__text">
+            <div>Hash</div>
+            <Copyable
+              className="job-details__card__text__description"
+              copy={ingestStore.jobs[jobId].finalize.mezzanineHash}
+            >
+              { ingestStore.jobs[jobId].finalize.mezzanineHash }
+            </Copyable>
+          </div>
+        </div>
+        <div className="job-details__card job-details__card--secondary">
+          <div className="job-details__card__text">
+            <div>ID</div>
+            <div className="job-details__card__text__description">
+              <button
+                type="button"
+                className="job-details__card__inline-link"
+                onClick={() => OpenObjectLink({
+                  libraryId: ingestStore.jobs[jobId].formData.mez.libraryId,
+                  objectId: ingestStore.jobs[jobId].finalize.objectId
+                })} >
+                <span>{ ingestStore.jobs[jobId].finalize.objectId }</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  };
+
+  const ErrorDialog = () => {
+    if(!showErrorDialog) { return null; }
+
+    return (
+      <Dialog
+        open={showErrorDialog}
+        onOpenChange={() => setShowErrorDialog(false)}
+        title={`Error Log for ${ingestStore.jobs[jobId].formData.master.title || jobId}`}
+        hideCancelButton={true}
+        confirmText="Close"
+        size="MD"
+      >
+        <JSONView json={ingestStore.jobs[jobId].errorLog} copyable={true} />
+      </Dialog>
     );
   };
 
@@ -95,30 +278,7 @@ const JobDetails = observer(() => {
     <div className="page-container">
       <div className="page__header">Details for {ingestStore.jobs[jobId].formData.master.title || jobId}</div>
       <div className="job-details">
-        <div className="job-details__job-info">
-          <div>
-            <span className="job-details__job-info__label">Name:</span>
-            <span>{ ingestStore.jobs[jobId].formData.master.title || "" }</span>
-          </div>
-
-          {
-            ingestStore.jobs[jobId].upload.size &&
-            <div>
-              <span className="job-details__job-info__label">File Size:</span>
-              <span>{ PrettyBytes(ingestStore.jobs[jobId].upload.size || 0) }</span>
-            </div>
-          }
-
-          <div>
-            <span className="job-details__job-info__label">ID:</span>
-            <span>{ jobId }</span>
-          </div>
-
-          <div>
-            <span className="job-details__job-info__label">Library ID:</span>
-            <span>{ ingestStore.jobs[jobId].formData.master.libraryId || "" }</span>
-          </div>
-        </div>
+        { JobInfo() }
 
         <h1 className="job-details__section-header">Progress Details</h1>
 
@@ -185,42 +345,9 @@ const JobDetails = observer(() => {
           }
         </div>
 
-        {
-          ingestStore.jobs[jobId].finalize.mezzanineHash &&
-            <>
-              <h1 className="job-details__section-header">Mezzanine Object Details</h1>
-              <div className="job-details__card job-details__card--secondary">
-                <div className="job-details__card__text">
-                  <div>Hash</div>
-                  <Copyable
-                    className="job-details__card__text__description"
-                    copy={ingestStore.jobs[jobId].finalize.mezzanineHash}
-                  >
-                    <div>
-                      { ingestStore.jobs[jobId].finalize.mezzanineHash }
-                    </div>
-                  </Copyable>
-                </div>
-              </div>
-              <div className="job-details__card job-details__card--secondary">
-                <div className="job-details__card__text">
-                  <div>ID</div>
-                  <div className="job-details__card__text__description">
-                    <button
-                      type="button"
-                      className="job-details__card__inline-link"
-                      onClick={() => OpenObjectLink({
-                        libraryId: ingestStore.jobs[jobId].formData.mez.libraryId,
-                        objectId: ingestStore.jobs[jobId].finalize.objectId
-                      })} >
-                      <span>{ ingestStore.jobs[jobId].finalize.objectId }</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
-        }
-        { DisplayError() }
+        { FinalizeInfo() }
+        { ErrorNotification() }
+        { ErrorDialog() }
       </div>
     </div>
   );

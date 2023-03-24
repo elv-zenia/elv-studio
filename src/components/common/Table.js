@@ -26,11 +26,22 @@ const Table = ({headers=[], rows=[]}) => {
       </div>
       <div className="table__body">
         {
-          rows.map((row) => (
-            <Link to={`./jobs/${row.id}`} key={`row-${row.id}`} className="table__body__row table__body__row--clickable" role="tr">
-              { TableRowColumns({row}) }
-            </Link>
-          ))
+          rows.map((row) => {
+            if(row.link) {
+              return (
+                <Link
+                  to={row.link}
+                  key={`row-${row.id}`}
+                  className="table__body__row table__body__row--clickable"
+                  role="tr"
+                >
+                  {TableRowColumns({row})}
+                </Link>
+              );
+            } else {
+              return TableRowColumns({row});
+            }
+          })
         }
       </div>
     </div>

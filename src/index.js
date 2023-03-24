@@ -12,6 +12,7 @@ import Form from "Components/ingest/Form";
 import LeftNavigation from "Components/LeftNavigation";
 import JobDetails from "Components/jobs/JobDetails";
 import JobsWrapper from "Components/jobs/JobsWrapper";
+import WarningDialog from "Components/WarningDialog";
 
 const appRoutes = [
   {path: "/new", Component: Form},
@@ -33,6 +34,7 @@ const App = observer(() => {
               <Route exact={true} key={path} path={path}>
                 <JobsWrapper>
                   <Component />
+                  <WarningDialog />
                 </JobsWrapper>
               </Route>
             ))

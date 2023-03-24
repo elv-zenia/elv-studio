@@ -29,6 +29,7 @@ class RootStore {
         target: window.parent,
         timeout: 60
       });
+      window.client = this.client;
 
       this.networkInfo = yield this.client.NetworkInfo();
     } catch(error) {
@@ -52,6 +53,10 @@ class RootStore {
 
     return {ok, returnVal, error};
   });
+
+  DecodeVersionHash = ({versionHash}) => {
+    return this.client.utils.DecodeVersionHash(versionHash);
+  };
 }
 
 export const rootStore = new RootStore();

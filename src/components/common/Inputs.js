@@ -28,12 +28,17 @@ export const Select = ({
       >
         {
           "label" in defaultOption && "value" in defaultOption ?
-            <option value={defaultOption.value}>{defaultOption.label}</option> : null
+            <option value={defaultOption.value} title={defaultOption.title}>{defaultOption.label}</option> : null
         }
         {
-          options.map(({value, label, disabled}) => (
-            <option value={value} key={value} disabled={disabled}>
-              { label }
+          options.map(option => (
+            <option
+              value={option.value}
+              key={option.value}
+              disabled={option.disabled}
+              title={option.title}
+            >
+              { option.label }
             </option>
           ))
         }

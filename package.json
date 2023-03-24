@@ -16,20 +16,20 @@
     "prepare": "husky install"
   },
   "dependencies": {
-    "@eluvio/elv-abr-profile": "^1.0.0",
-    "@eluvio/elv-client-js": "^4.0.0",
-    "@eluvio/elv-lro-status": "^3.0.6",
+    "@eluvio/elv-abr-profile": "^1.0.1",
+    "@eluvio/elv-client-js": "^4.0.22",
+    "@eluvio/elv-lro-status": "^3.0.7",
     "@radix-ui/react-dialog": "^1.0.0",
     "@radix-ui/react-tooltip": "^1.0.0",
     "mobx": "^6.6.0",
     "mobx-react": "^7.5.0",
     "pretty-bytes": "^6.0.0",
     "react": "17.0.2",
+    "react-copy-to-clipboard": "^5.1.0",
     "react-dom": "17.0.2",
     "react-dropzone": "^14.2.0",
     "react-inlinesvg": "^3.0.1",
     "react-router-dom": "5.2.0",
-    "select": "^1.1.2",
     "url-join": "^5.0.0"
   },
   "devDependencies": {
