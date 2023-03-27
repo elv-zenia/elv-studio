@@ -10,27 +10,27 @@ const defaultAbrBothProfile = require("./profiles/abrProfileBoth.json");
  * @returns {Object} - ABR Profile with the appropriate playout formats
  */
 export const DrmWidevineFairplayProfile = ({abrProfile={}}) => {
-  if(!abrProfile.playout_formats) { throw Error("No playout formats found"); }
+  if(!abrProfile.playout_formats) { abrProfile["playout_formats"] = {}; }
 
   const restrictedFormats = {
     "hls-fairplay": abrProfile.playout_formats["hls-fairplay"],
     "dash-widevine": abrProfile.playout_formats["dash-widevine"]
   };
 
+  const hasPlayouts = Object.keys(restrictedFormats).some(format => abrProfile.playout_formats[format]);
+
   abrProfile.playout_formats = restrictedFormats;
 
   return {
-    ok: true,
+    ok: hasPlayouts,
     result: abrProfile
   };
 };
 
 export const DrmPublicProfile = ({abrProfile}) => {
-  if(!abrProfile.playout_formats) { throw Error("No playout formats found"); }
-
   let playoutFormats = {};
 
-  Object.keys(abrProfile.playout_formats).forEach(formatName => {
+  Object.keys(abrProfile.playout_formats || {}).forEach(formatName => {
     if(!["fairplay", "clear"].some(name => formatName.includes(name))) {
       playoutFormats[formatName] = abrProfile.playout_formats[formatName];
     }
@@ -39,7 +39,7 @@ export const DrmPublicProfile = ({abrProfile}) => {
   abrProfile.playout_formats = playoutFormats;
 
   return {
-    ok: true,
+    ok: playoutFormats === {} ? false : true,
     result: abrProfile
   };
 };
