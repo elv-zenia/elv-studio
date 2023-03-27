@@ -5,6 +5,7 @@ import {FileInfo} from "Utils/Files";
 import Path from "path";
 import {rootStore} from "./index";
 import {DrmPublicProfile, DrmWidevineFairplayProfile} from "Utils/ABR";
+import {Base64} from "Utils/Base64";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
 const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
@@ -76,7 +77,7 @@ class IngestStore {
     try {
       localStorage.setItem(
         "elv-jobs",
-        btoa(JSON.stringify(this.jobs))
+        Base64.encode(JSON.stringify(this.jobs))
       );
     } catch(error) {
       let errorMessage;
@@ -115,7 +116,7 @@ class IngestStore {
     this.UpdateIngestJobs({jobs});
     localStorage.setItem(
       "elv-jobs",
-      btoa(JSON.stringify(jobs))
+      Base64.encode(JSON.stringify(jobs))
     );
   }
 
@@ -353,29 +354,26 @@ class IngestStore {
   });
 
   CreateContentObject = flow(function * ({libraryId, mezContentType, formData}) {
-    const result = yield rootStore.WrapApiCall({
-      api: this.client.CreateContentObject({
+    let createResponse;
+    let totalFileSize;
+    try {
+      createResponse = yield this.client.CreateContentObject({
         libraryId,
         options: mezContentType ? { type: mezContentType } : {}
-      })
-    });
-    const createResponse = result.returnVal;
-    formData.contentType = mezContentType;
-    let totalFileSize;
-    if(formData.master.files) {
-      totalFileSize = 0;
-      formData.master.files.forEach(file => totalFileSize += file.size);
-    }
-
-    if(result.ok) {
-      const visibilityResult = yield rootStore.WrapApiCall({
-        api: this.client.SetVisibility({
-          id: result.returnVal.id,
-          visibility: 0
-        })
       });
 
-      if(visibilityResult.ok) {
+      if(formData.master.files) {
+        totalFileSize = 0;
+        formData.master.files.forEach(file => totalFileSize += file.size);
+      }
+
+      try {
+        yield this.client.SetVisibility({
+          id: createResponse.id,
+          visibility: 0
+        });
+
+        formData.contentType = mezContentType;
         formData.master.writeToken = createResponse.write_token;
 
         this.UpdateIngestObject({
@@ -397,12 +395,13 @@ class IngestStore {
         });
 
         return createResponse;
-      } else {
-        console.error("Unable to set visibility.", visibilityResult.error);
+      } catch(error) {
+        console.error("Unable to set visibility.", error);
       }
-    } else {
-      console.error("Failed to create content object.", result.error);
+    } catch(error) {
+      console.error("Failed to create content object.", error);
     }
+
   });
 
   CreateProductionMaster = flow(function * ({
