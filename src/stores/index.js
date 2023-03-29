@@ -40,6 +40,14 @@ class RootStore {
     }
   });
 
+  Decode = (string) => {
+    try {
+      return this.client.utils.FromB64(string);
+    } catch(error) {
+      console.error(`Unable to decode ${string}.`, error);
+    }
+  }
+
   WrapApiCall = flow(function * ({api}) {
     let ok = false;
     let returnVal = null;

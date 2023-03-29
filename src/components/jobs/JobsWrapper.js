@@ -1,14 +1,13 @@
 import React, {useEffect} from "react";
 import {observer} from "mobx-react";
 import {PageLoader} from "Components/common/Loader";
-import {ingestStore} from "Stores";
-import {Base64} from "Utils/Base64";
+import {ingestStore, rootStore} from "Stores";
 
 const JobsWrapper = observer(({children}) => {
   useEffect(() => {
     const localStorageJobs = localStorage.getItem("elv-jobs");
     if(localStorageJobs) {
-      const parsedJobs = JSON.parse(Base64.decode(localStorageJobs));
+      const parsedJobs = JSON.parse(rootStore.Decode(localStorageJobs));
 
       ingestStore.UpdateIngestJobs({jobs: parsedJobs});
     } else {

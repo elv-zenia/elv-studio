@@ -5,7 +5,6 @@ import {FileInfo} from "Utils/Files";
 import Path from "path";
 import {rootStore} from "./index";
 import {DrmPublicProfile, DrmWidevineFairplayProfile} from "Utils/ABR";
-import {Base64} from "Utils/Base64";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
 const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
@@ -77,7 +76,7 @@ class IngestStore {
     try {
       localStorage.setItem(
         "elv-jobs",
-        Base64.encode(JSON.stringify(this.jobs))
+        this.client.utils.B64(JSON.stringify(this.jobs))
       );
     } catch(error) {
       let errorMessage;
@@ -116,7 +115,7 @@ class IngestStore {
     this.UpdateIngestJobs({jobs});
     localStorage.setItem(
       "elv-jobs",
-      Base64.encode(JSON.stringify(jobs))
+      this.client.utils.B64(JSON.stringify(jobs))
     );
   }
 
