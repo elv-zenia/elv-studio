@@ -76,7 +76,7 @@ class IngestStore {
     try {
       localStorage.setItem(
         "elv-jobs",
-        btoa(JSON.stringify(this.jobs))
+        this.client.utils.B64(JSON.stringify(this.jobs))
       );
     } catch(error) {
       let errorMessage;
@@ -115,7 +115,7 @@ class IngestStore {
     this.UpdateIngestJobs({jobs});
     localStorage.setItem(
       "elv-jobs",
-      btoa(JSON.stringify(jobs))
+      this.client.utils.B64(JSON.stringify(jobs))
     );
   }
 
@@ -353,29 +353,26 @@ class IngestStore {
   });
 
   CreateContentObject = flow(function * ({libraryId, mezContentType, formData}) {
-    const result = yield rootStore.WrapApiCall({
-      api: this.client.CreateContentObject({
+    let createResponse;
+    let totalFileSize;
+    try {
+      createResponse = yield this.client.CreateContentObject({
         libraryId,
         options: mezContentType ? { type: mezContentType } : {}
-      })
-    });
-    const createResponse = result.returnVal;
-    formData.contentType = mezContentType;
-    let totalFileSize;
-    if(formData.master.files) {
-      totalFileSize = 0;
-      formData.master.files.forEach(file => totalFileSize += file.size);
-    }
-
-    if(result.ok) {
-      const visibilityResult = yield rootStore.WrapApiCall({
-        api: this.client.SetVisibility({
-          id: result.returnVal.id,
-          visibility: 0
-        })
       });
 
-      if(visibilityResult.ok) {
+      if(formData.master.files) {
+        totalFileSize = 0;
+        formData.master.files.forEach(file => totalFileSize += file.size);
+      }
+
+      try {
+        yield this.client.SetVisibility({
+          id: createResponse.id,
+          visibility: 0
+        });
+
+        formData.contentType = mezContentType;
         formData.master.writeToken = createResponse.write_token;
 
         this.UpdateIngestObject({
@@ -397,12 +394,13 @@ class IngestStore {
         });
 
         return createResponse;
-      } else {
-        console.error("Unable to set visibility.", visibilityResult.error);
+      } catch(error) {
+        console.error("Unable to set visibility.", error);
       }
-    } else {
-      console.error("Failed to create content object.", result.error);
+    } catch(error) {
+      console.error("Failed to create content object.", error);
     }
+
   });
 
   CreateProductionMaster = flow(function * ({
