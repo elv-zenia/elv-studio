@@ -1,17 +1,17 @@
 import React, {useEffect, useState} from "react";
+import {Redirect} from "react-router-dom";
 import {observer} from "mobx-react";
+import PrettyBytes from "pretty-bytes";
 
 import {ingestStore} from "Stores";
+import {s3Regions} from "Utils";
+import {abrProfileClear, abrProfileBoth} from "Utils/ABR";
+
 import Dropzone from "Components/common/Dropzone";
 import FabricLoader from "Components/FabricLoader";
 import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "Components/common/Inputs";
-import {Redirect} from "react-router-dom";
-import {s3Regions} from "Utils";
-import PrettyBytes from "pretty-bytes";
-import InlineNotification from "Components/common/InlineNotification";
-import ImageIcon from "Components/common/ImageIcon";
+import InlineNotification from "Components/common/InlineNotification";import ImageIcon from "Components/common/ImageIcon";
 import CloseIcon from "Assets/icons/close";
-import {abrProfileClear, abrProfileBoth} from "Utils/ABR";
 
 const ErrorMessaging = ({errorTitle, errorMessage}) => {
   if(!errorTitle && !errorMessage) { return null; }
@@ -35,6 +35,37 @@ const HandleRemove = ({index, files, SetFilesCallback}) => {
   if(SetFilesCallback && typeof SetFilesCallback === "function") {
     SetFilesCallback(newFiles);
   }
+};
+
+const Permissions = ({permission, setPermission}) => {
+  const permissionLevels = rootStore.client.permissionLevels;
+
+  return (
+    <div className="form__permission-info">
+      <Select
+        label="Permission"
+        labelDescription="Set a permission level."
+        tooltip={
+          Object.values(rootStore.client.permissionLevels).map(({short, description}) =>
+            <div key={`permission-info-${short}`} className="form__permission-tooltip-item">
+              <div className="form__permission-tooltip-title">{ short }:</div>
+              <div>{ description }</div>
+            </div>
+          )
+        }
+        value={permission}
+        onChange={event => setPermission(event.target.value)}
+        options={
+          Object.keys(permissionLevels || []).map(permissionName => (
+            {
+              label: permissionLevels[permissionName].short,
+              value: permissionName
+            }
+          ))
+        }
+      />
+    </div>
+  );
 };
 
 const S3Access = ({
@@ -92,6 +123,7 @@ const Form = observer(() => {
   const [accessGroup, setAccessGroup] = useState();
   const [name, setName] = useState();
   const [description, setDescription] = useState();
+  const [permission, setPermission] = useState("editable");
 
   const [mezLibrary, setMezLibrary] = useState();
   const [mezContentType, setMezContentType] = useState();
@@ -342,7 +374,8 @@ const Form = observer(() => {
             name: name,
             description: description,
             displayName,
-            newObject: !useMasterAsMez
+            newObject: !useMasterAsMez,
+            permission: permission
           }
         }
       };
@@ -531,6 +564,8 @@ const Form = observer(() => {
             }}
             onChange={event => setAccessGroup(event.target.value)}
           />
+
+          <Permissions permission={permission} setPermission={setPermission} />
 
           <Checkbox
             label="Use Master Object as Mezzanine Object"

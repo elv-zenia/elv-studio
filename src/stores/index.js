@@ -46,21 +46,7 @@ class RootStore {
     } catch(error) {
       console.error(`Unable to decode ${string}.`, error);
     }
-  }
-
-  WrapApiCall = flow(function * ({api}) {
-    let ok = false;
-    let returnVal = null;
-    let error = null;
-    try {
-      returnVal = yield api;
-      ok = true;
-    } catch(e) {
-      error = e;
-    }
-
-    return {ok, returnVal, error};
-  });
+  };
 
   DecodeVersionHash = ({versionHash}) => {
     return this.client.utils.DecodeVersionHash(versionHash);

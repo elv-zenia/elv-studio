@@ -1,5 +1,5 @@
 import {flow, makeAutoObservable} from "mobx";
-import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
+import {ValidateLibrary, ValidateObject} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
 import {FileInfo} from "Utils/Files";
 import Path from "path";
@@ -175,25 +175,6 @@ class IngestStore {
     }
 
     return abrProfileExclude;
-  };
-
-  GenerateEmbedUrl = ({versionHash, objectId}) => {
-    const networkInfo = rootStore.networkInfo;
-    let embedUrl = new URL("https://embed.v3.contentfabric.io");
-    const networkName = networkInfo.name === "demov3" ? "demo" : (networkInfo.name === "test" && networkInfo.id === 955205) ? "testv4" : networkInfo.name;
-
-    embedUrl.searchParams.set("p", "");
-    embedUrl.searchParams.set("lp", "");
-    embedUrl.searchParams.set("net", networkName);
-    embedUrl.searchParams.set("ct", "s");
-
-    if(versionHash) {
-      embedUrl.searchParams.set("vid", versionHash);
-    } else {
-      embedUrl.searchParams.set("oid", objectId);
-    }
-
-    return embedUrl.toString();
   };
 
   HandleError = ({id, step, error, errorMessage}) => {
@@ -763,7 +744,8 @@ class IngestStore {
     newObject=false,
     variant="default",
     offeringKey="default",
-    access=[]
+    access=[],
+    permission
   }) {
     let createResponse;
     try {
@@ -792,6 +774,20 @@ class IngestStore {
       libraryId,
       objectId
     });
+
+    try {
+      yield this.client.SetPermission({
+        objectId,
+        permission
+      });
+    } catch(error) {
+      return this.HandleError({
+        step: "ingest",
+        errorMessage: "Unable to set permission level.",
+        error,
+        id: masterObjectId
+      });
+    }
 
     let writeToken;
     let hash;
@@ -1081,6 +1077,40 @@ class IngestStore {
         id: objectId
       });
     }
+  });
+
+  GenerateEmbedUrl = flow(function * ({objectId}) {
+    ValidateObject(objectId);
+
+    const permission = yield this.client.Permission({objectId});
+
+    let embedUrl = new URL("https://embed.v3.contentfabric.io");
+    const networkName = rootStore.networkInfo.name === "demov3" ? "demo" : (rootStore.networkInfo.name === "test" && rootStore.networkInfo.id === 955205) ? "testv4" : rootStore.networkInfo.name;
+
+    embedUrl.searchParams.set("p", "");
+    embedUrl.searchParams.set("lp", "");
+    embedUrl.searchParams.set("net", networkName);
+    embedUrl.searchParams.set("ct", "s");
+    embedUrl.searchParams.set("oid", objectId);
+
+    if(["owner", "editable", "viewable"].includes(permission)) {
+      const token = yield this.client.CreateSignedToken({
+        objectId,
+        duration: 100 * 24 * 60 * 60 * 1000 // milliseconds
+      });
+
+      embedUrl.searchParams.set("ath", token);
+    }
+
+    this.UpdateIngestObject({
+      id: objectId,
+      data: {
+        ...this.jobs[objectId],
+        embedUrl: embedUrl.toString()
+      }
+    });
+
+    return embedUrl.toString();
   });
 }
 

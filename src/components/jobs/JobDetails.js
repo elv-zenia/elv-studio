@@ -78,7 +78,8 @@ const JobDetails = observer(() => {
       description: mezFormData.description,
       displayName: mezFormData.displayName,
       newObject: mezFormData.newObject,
-      access: JSON.parse(access)
+      access: JSON.parse(access),
+      permission: mezFormData.permission
     });
   };
 
@@ -250,6 +251,32 @@ const JobDetails = observer(() => {
                 })} >
                 <span>{ ingestStore.jobs[jobId].finalize.objectId }</span>
               </button>
+            </div>
+          </div>
+        </div>
+        <div className="job-details__card job-details__card--secondary">
+          <div className="job-details__card__text">
+            <div>Embeddable URL</div>
+            <div className="job-details__card__text__description">
+              {
+                ingestStore.jobs[jobId].embedUrl ?
+                  <a
+                    href={ingestStore.jobs[jobId].embedUrl}
+                    target="_blank"
+                    className="job-details__card__inline-link"
+                  >
+                    <span>
+                      { ingestStore.jobs[jobId].embedUrl }
+                    </span>
+                  </a> :
+                  <button
+                    type="button"
+                    className="job-details__card-button primary-button"
+                    onClick={() => ingestStore.GenerateEmbedUrl({objectId: jobId})}
+                  >
+                    Create embed URL
+                  </button>
+              }
             </div>
           </div>
         </div>

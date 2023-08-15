@@ -1,5 +1,7 @@
 import React, {useEffect, useState} from "react";
 import {ParseInputJson} from "Utils/Input";
+import InfoIcon from "Assets/icons/circle-info";
+import Tooltip from "Components/common/Tooltip";
 
 export const Select = ({
   options,
@@ -10,13 +12,30 @@ export const Select = ({
   formName,
   onChange,
   disabled,
-  value
+  value,
+  tooltip
 }) => {
   return (
     <>
       <label className="form__input-label" htmlFor={formName}>
-        { label }
-        <span className="form__input-label--required">{ required ? " *" : ""}</span>
+        <span>{ label }</span>
+        {
+          required &&
+          <span className="form__input-label--required">*</span>
+        }
+        {
+          tooltip ?
+            <Tooltip
+              className="form__input-label-tooltip"
+              message={tooltip}
+              icon={InfoIcon}
+              side="bottom"
+              sideOffset={0}
+              alignOffest={-12}
+              align="start"
+              maxWidth={"500px"}
+            /> : null
+        }
       </label>
       <div className="form__input-description">{ labelDescription }</div>
       <select
