@@ -1,9 +1,8 @@
 import {flow, makeAutoObservable} from "mobx";
-import {ValidateLibrary, ValidateObject} from "@eluvio/elv-client-js/src/Validation";
+import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
 import {FileInfo} from "Utils/Files";
 import Path from "path";
-import {rootStore} from "./index";
 import {DrmPublicProfile, DrmWidevineFairplayProfile} from "Utils/ABR";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
@@ -1080,37 +1079,17 @@ class IngestStore {
   });
 
   GenerateEmbedUrl = flow(function * ({objectId}) {
-    ValidateObject(objectId);
-
-    const permission = yield this.client.Permission({objectId});
-
-    let embedUrl = new URL("https://embed.v3.contentfabric.io");
-    const networkName = rootStore.networkInfo.name === "demov3" ? "demo" : (rootStore.networkInfo.name === "test" && rootStore.networkInfo.id === 955205) ? "testv4" : rootStore.networkInfo.name;
-
-    embedUrl.searchParams.set("p", "");
-    embedUrl.searchParams.set("lp", "");
-    embedUrl.searchParams.set("net", networkName);
-    embedUrl.searchParams.set("ct", "s");
-    embedUrl.searchParams.set("oid", objectId);
-
-    if(["owner", "editable", "viewable"].includes(permission)) {
-      const token = yield this.client.CreateSignedToken({
-        objectId,
-        duration: 100 * 24 * 60 * 60 * 1000 // milliseconds
-      });
-
-      embedUrl.searchParams.set("ath", token);
-    }
+    const url = yield this.client.EmbedUrl({objectId});
 
     this.UpdateIngestObject({
       id: objectId,
       data: {
         ...this.jobs[objectId],
-        embedUrl: embedUrl.toString()
+        embedUrl: url
       }
     });
 
-    return embedUrl.toString();
+    return url;
   });
 }
 
