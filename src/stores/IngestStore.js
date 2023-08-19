@@ -914,7 +914,7 @@ class IngestStore {
           clearInterval(statusIntervalId);
           done = true;
 
-          const embedUrl = this.GenerateEmbedUrl({
+          const embedUrl = await this.GenerateEmbedUrl({
             objectId: masterObjectId
           });
 
