@@ -8,4 +8,17 @@
     height: 1.2rem;
     width: 1.2rem;
   }
+
+  &__content {
+    background-color: $gray3;
+    border-radius: 8px;
+    color: $white;
+    font-size: 0.9rem;
+    line-height: 1;
+    padding: 10px 15px;
+  }
+
+  &__arrow {
+    fill: $gray3;
+  }
 }

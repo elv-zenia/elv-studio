@@ -14,7 +14,7 @@
 
     &--secondary {
       background-color: unset;
-      border: 1px solid $gray2;
+      border: 1px solid rgba($gray4, 0.5);
     }
 
     &__icon {
@@ -33,6 +33,11 @@
 
     &__inline-link {
       color: $blue;
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-align: left;
+      text-overflow: ellipsis;
     }
 
     &__text {
@@ -43,7 +48,9 @@
       &__description {
         font-size: 0.875rem;
         font-weight: 400;
+        overflow: hidden;
         padding-top: 0.25rem;
+        white-space: nowrap;
 
         &__icon {
           height: 20px;

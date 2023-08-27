@@ -3,7 +3,6 @@ import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
 import {FileInfo} from "Utils/Files";
 import Path from "path";
-import {rootStore} from "./index";
 import {DrmPublicProfile, DrmWidevineFairplayProfile} from "Utils/ABR";
 const ABR = require("@eluvio/elv-abr-profile");
 const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
@@ -175,25 +174,6 @@ class IngestStore {
     }
 
     return abrProfileExclude;
-  };
-
-  GenerateEmbedUrl = ({versionHash, objectId}) => {
-    const networkInfo = rootStore.networkInfo;
-    let embedUrl = new URL("https://embed.v3.contentfabric.io");
-    const networkName = networkInfo.name === "demov3" ? "demo" : (networkInfo.name === "test" && networkInfo.id === 955205) ? "testv4" : networkInfo.name;
-
-    embedUrl.searchParams.set("p", "");
-    embedUrl.searchParams.set("lp", "");
-    embedUrl.searchParams.set("net", networkName);
-    embedUrl.searchParams.set("ct", "s");
-
-    if(versionHash) {
-      embedUrl.searchParams.set("vid", versionHash);
-    } else {
-      embedUrl.searchParams.set("oid", objectId);
-    }
-
-    return embedUrl.toString();
   };
 
   HandleError = ({id, step, error, errorMessage}) => {
@@ -763,7 +743,8 @@ class IngestStore {
     newObject=false,
     variant="default",
     offeringKey="default",
-    access=[]
+    access=[],
+    permission
   }) {
     let createResponse;
     try {
@@ -792,6 +773,20 @@ class IngestStore {
       libraryId,
       objectId
     });
+
+    try {
+      yield this.client.SetPermission({
+        objectId,
+        permission
+      });
+    } catch(error) {
+      return this.HandleError({
+        step: "ingest",
+        errorMessage: "Unable to set permission level.",
+        error,
+        id: masterObjectId
+      });
+    }
 
     let writeToken;
     let hash;
@@ -919,7 +914,7 @@ class IngestStore {
           clearInterval(statusIntervalId);
           done = true;
 
-          const embedUrl = this.GenerateEmbedUrl({
+          const embedUrl = await this.GenerateEmbedUrl({
             objectId: masterObjectId
           });
 
@@ -1081,6 +1076,20 @@ class IngestStore {
         id: objectId
       });
     }
+  });
+
+  GenerateEmbedUrl = flow(function * ({objectId}) {
+    const url = yield this.client.EmbedUrl({objectId});
+
+    this.UpdateIngestObject({
+      id: objectId,
+      data: {
+        ...this.jobs[objectId],
+        embedUrl: url
+      }
+    });
+
+    return url;
   });
 }
 
