@@ -640,6 +640,10 @@ const Form = observer(() => {
             options={Object.keys(ingestStore.contentTypes || {}).map(typeId => (
               {value: typeId, label: ingestStore.contentTypes[typeId].name}
             ))}
+            defaultOption={{
+              value: "",
+              label: "Select Content Type"
+            }}
             value={mezContentType}
             onChange={event => setMezContentType(event.target.value)}
           />
