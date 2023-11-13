@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {Redirect} from "react-router-dom";
 import {observer} from "mobx-react";
 import PrettyBytes from "pretty-bytes";
@@ -14,10 +14,18 @@ import InlineNotification from "Components/common/InlineNotification";import Ima
 import CloseIcon from "Assets/icons/close";
 
 const ErrorMessaging = ({errorTitle, errorMessage}) => {
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if(errorRef && errorRef.current) {
+      errorRef.current.scrollIntoView();
+    }
+  }, [errorTitle]);
+
   if(!errorTitle && !errorMessage) { return null; }
 
   return (
-    <div className="form-notification">
+    <div className="form-notification" ref={errorRef}>
       <InlineNotification
         type="error"
         title={errorTitle}
@@ -128,7 +136,7 @@ const Form = observer(() => {
   const [mezLibrary, setMezLibrary] = useState();
   const [mezContentType, setMezContentType] = useState();
 
-  const [displayName, setDisplayName] = useState();
+  const [displayTitle, setDisplayTitle] = useState();
   const [playbackEncryption, setPlaybackEncryption] = useState("");
   const [useMasterAsMez, setUseMasterAsMez] = useState(true);
 
@@ -373,16 +381,21 @@ const Form = observer(() => {
             accessGroup: accessGroupAddress,
             name: name,
             description: description,
-            displayName,
+            displayTitle,
             newObject: !useMasterAsMez,
             permission: permission
           }
         }
       };
 
-      const createResponse = await ingestStore.CreateContentObject(createParams);
+      const createResponse = await ingestStore.CreateContentObject(createParams) || {};
 
-      setMasterObjectId(createResponse.id);
+      if(createResponse.error) {
+        setErrorTitle("Unable to create content object");
+        setErrorMessage(createResponse.error);
+      } else if(createResponse.id) {
+        setMasterObjectId(createResponse.id);
+      }
     } finally {
       setIsCreating(false);
     }
@@ -539,10 +552,10 @@ const Form = observer(() => {
             value={description}
           />
           <Input
-            label="Display Name"
-            formName="displayName"
-            onChange={event => setDisplayName(event.target.value)}
-            value={displayName}
+            label="Display Title"
+            formName="displayTitle"
+            onChange={event => setDisplayTitle(event.target.value)}
+            value={displayTitle}
           />
 
           <Select

@@ -76,7 +76,7 @@ const JobDetails = observer(() => {
       name: mezFormData.name,
       accessGroupAddress: mezFormData.accessGroup,
       description: mezFormData.description,
-      displayName: mezFormData.displayName,
+      displayTitle: mezFormData.displayTitle,
       newObject: mezFormData.newObject,
       access: JSON.parse(access),
       permission: mezFormData.permission

@@ -379,8 +379,8 @@ class IngestStore {
       }
     } catch(error) {
       console.error("Failed to create content object.", error);
+      return { error };
     }
-
   });
 
   CreateProductionMaster = flow(function * ({
@@ -737,7 +737,7 @@ class IngestStore {
     abrProfile,
     name,
     description,
-    displayName,
+    displayTitle,
     masterVersionHash,
     type,
     newObject=false,
@@ -898,7 +898,7 @@ class IngestStore {
                 accessGroup : accessGroupAddress,
                 name,
                 description,
-                displayName,
+                displayTitle,
                 masterVersionHash,
                 type,
                 newObject,
@@ -914,7 +914,7 @@ class IngestStore {
           clearInterval(statusIntervalId);
           done = true;
 
-          const embedUrl = await this.GenerateEmbedUrl({
+          await this.GenerateEmbedUrl({
             objectId: masterObjectId
           });
 
@@ -928,17 +928,7 @@ class IngestStore {
                   name: `${name} MEZ`,
                   description,
                   asset_metadata: {
-                    display_title: `${name} MEZ`,
-                    nft: {
-                      name,
-                      display_name: displayName,
-                      description,
-                      created_at: new Date(),
-                      playable: true,
-                      has_audio: this.jobs[masterObjectId].streams.audio,
-                      embed_url: embedUrl,
-                      external_url: embedUrl
-                    }
+                    title: `${displayTitle} MEZ`,
                   }
                 }
               }
@@ -949,7 +939,7 @@ class IngestStore {
 
             return this.HandleError({
               step: "ingest",
-              errorMessage: "Unable to update metadata with NFT details.",
+              errorMessage: "Unable to update metadata.",
               error,
               id: masterObjectId
             });
