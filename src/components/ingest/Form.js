@@ -189,6 +189,28 @@ const Form = observer(() => {
   }, [mezLibrary]);
 
   useEffect(() => {
+    if(permission === "owner") {
+      setDisableDrmAll(true);
+      setDisableDrmPublic(true);
+      setDisableDrmRestricted(true);
+      setDisableClear(false);
+    } else {
+      if(
+        !ingestStore.libraries ||
+        (!ingestStore.GetLibrary(mezLibrary) &&
+        !ingestStore.GetLibrary(masterLibrary))
+      ) {
+        return;
+      }
+
+      SetPlaybackSettings({
+        libraryId: mezLibrary || masterLibrary,
+        type: mezLibrary ? "MEZ" : "MASTER"
+      });
+    }
+  }, [permission]);
+
+  useEffect(() => {
     const hasSizeableFiles = files.some(file => file.size > 0);
 
     if(!hasSizeableFiles && files.length > 0) {

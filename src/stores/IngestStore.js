@@ -387,6 +387,7 @@ class IngestStore {
     libraryId,
     files,
     title,
+    displayTitle,
     abr,
     accessGroupAddress,
     playbackEncryption="clear",
@@ -621,7 +622,8 @@ class IngestStore {
             name: `${title} [ingest: uploading] MASTER`,
             description,
             asset_metadata: {
-              display_title: `${title} [ingest: uploading] MASTER`
+              title,
+              display_title: displayTitle
             }
           },
           reference: true,
@@ -647,21 +649,12 @@ class IngestStore {
 
     // Update name to remove [ingest: uploading]
     try {
-      yield this.client.MergeMetadata({
+      yield this.client.ReplaceMetadata({
         libraryId,
         objectId: masterObjectId,
         writeToken,
-        metadata: {
-          public: {
-            name: `${title} MASTER`,
-            description,
-            asset_metadata: {
-              display_title: `${title} MASTER`
-            }
-          },
-          reference: true,
-          elv_created_at: new Date().getTime()
-        },
+        metadataSubtree: "public/name",
+        metadata: `${title} MASTER`
       });
     } catch(error) {
       return this.HandleError({
@@ -752,7 +745,7 @@ class IngestStore {
         libraryId,
         objectId: newObject ? undefined : masterObjectId,
         type,
-        name: `${name} [ingest: transcoding] MEZ`,
+        name,
         masterVersionHash,
         abrProfile,
         variant,
@@ -928,7 +921,8 @@ class IngestStore {
                   name: `${name} MEZ`,
                   description,
                   asset_metadata: {
-                    title: `${displayTitle} MEZ`,
+                    title: name,
+                    display_title: displayTitle
                   }
                 }
               }

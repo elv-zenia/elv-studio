@@ -54,7 +54,8 @@ const JobDetails = observer(() => {
       copy,
       masterObjectId: jobId,
       writeToken,
-      playbackEncryption
+      playbackEncryption,
+      displayTitle: mezFormData.displayTitle
     });
 
     if(!response) { return; }
