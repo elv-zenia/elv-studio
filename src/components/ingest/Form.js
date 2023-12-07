@@ -193,7 +193,6 @@ const Form = observer(() => {
       setDisableDrmAll(true);
       setDisableDrmPublic(true);
       setDisableDrmRestricted(true);
-      setDisableClear(false);
     } else {
       if(
         !ingestStore.libraries ||
@@ -298,17 +297,17 @@ const Form = observer(() => {
           stringify: true
         });
 
-        setDisableDrmAll(!libraryHasCert);
-        setDisableDrmPublic(!libraryHasCert);
-        setDisableDrmRestricted(!libraryHasCert);
+        setDisableDrmAll(!libraryHasCert || permission === "owner");
+        setDisableDrmPublic(!libraryHasCert || permission === "owner");
+        setDisableDrmRestricted(!libraryHasCert || permission === "owner");
         setDisableClear(false);
       } else {
         SetAbrProfile({profile: library.abr, stringify: true});
 
         setDisableClear(!library.abrProfileSupport.clear);
-        setDisableDrmAll(!libraryHasCert || !library.abrProfileSupport.drmAll);
-        setDisableDrmPublic(!libraryHasCert || !library.abrProfileSupport.drmPublic);
-        setDisableDrmRestricted(!libraryHasCert || !library.abrProfileSupport.drmRestricted);
+        setDisableDrmAll(!libraryHasCert || !library.abrProfileSupport.drmAll || permission === "owner");
+        setDisableDrmPublic(!libraryHasCert || !library.abrProfileSupport.drmPublic || permission === "owner");
+        setDisableDrmRestricted(!libraryHasCert || !library.abrProfileSupport.drmRestricted || permission === "owner");
       }
 
       setPlaybackEncryption("");
