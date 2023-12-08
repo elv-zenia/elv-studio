@@ -189,6 +189,27 @@ const Form = observer(() => {
   }, [mezLibrary]);
 
   useEffect(() => {
+    if(permission === "owner") {
+      setDisableDrmAll(true);
+      setDisableDrmPublic(true);
+      setDisableDrmRestricted(true);
+    } else {
+      if(
+        !ingestStore.libraries ||
+        (!ingestStore.GetLibrary(mezLibrary) &&
+        !ingestStore.GetLibrary(masterLibrary))
+      ) {
+        return;
+      }
+
+      SetPlaybackSettings({
+        libraryId: mezLibrary || masterLibrary,
+        type: mezLibrary ? "MEZ" : "MASTER"
+      });
+    }
+  }, [permission]);
+
+  useEffect(() => {
     const hasSizeableFiles = files.some(file => file.size > 0);
 
     if(!hasSizeableFiles && files.length > 0) {
@@ -276,17 +297,17 @@ const Form = observer(() => {
           stringify: true
         });
 
-        setDisableDrmAll(!libraryHasCert);
-        setDisableDrmPublic(!libraryHasCert);
-        setDisableDrmRestricted(!libraryHasCert);
+        setDisableDrmAll(!libraryHasCert || permission === "owner");
+        setDisableDrmPublic(!libraryHasCert || permission === "owner");
+        setDisableDrmRestricted(!libraryHasCert || permission === "owner");
         setDisableClear(false);
       } else {
         SetAbrProfile({profile: library.abr, stringify: true});
 
         setDisableClear(!library.abrProfileSupport.clear);
-        setDisableDrmAll(!libraryHasCert || !library.abrProfileSupport.drmAll);
-        setDisableDrmPublic(!libraryHasCert || !library.abrProfileSupport.drmPublic);
-        setDisableDrmRestricted(!libraryHasCert || !library.abrProfileSupport.drmRestricted);
+        setDisableDrmAll(!libraryHasCert || !library.abrProfileSupport.drmAll || permission === "owner");
+        setDisableDrmPublic(!libraryHasCert || !library.abrProfileSupport.drmPublic || permission === "owner");
+        setDisableDrmRestricted(!libraryHasCert || !library.abrProfileSupport.drmRestricted || permission === "owner");
       }
 
       setPlaybackEncryption("");
