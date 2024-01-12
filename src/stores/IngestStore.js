@@ -332,6 +332,46 @@ class IngestStore {
     }
   });
 
+  GetContentAdminsGroupAddress = flow(function * () {
+    try {
+      const tenantContractId = yield this.client.userProfileClient.TenantContractId();
+      const contentAdminGroupAddress = yield this.client.CallContractMethod({
+        contractAddress: this.client.utils.HashToAddress(tenantContractId),
+        methodName: "groupsMapping",
+        methodArgs: ["content_admin", 0],
+        formatArguments: true,
+      });
+
+      if(!contentAdminGroupAddress) {
+      throw "Unable to determine content admins group address";
+    }
+
+    return contentAdminGroupAddress;
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Error retrieving content admins group:");
+      // eslint-disable-next-line no-console
+      console.error(error);
+    }
+  });
+
+  AddContentAdminsGroupPermissions = flow(function * ({objectId}) {
+    try {
+      // Automatically add permissions for content manage
+      const contentAdminsGroupAddress = yield this.GetContentAdminsGroupAddress();
+      yield this.client.AddContentObjectGroupPermission({
+        objectId,
+        groupAddress: contentAdminsGroupAddress,
+        permission: "manage"
+      });
+    } catch(error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to add new object to content admins group:");
+      // eslint-disable-next-line no-console
+      console.error(error);
+    }
+  });
+
   CreateContentObject = flow(function * ({libraryId, mezContentType, formData}) {
     let createResponse;
     let totalFileSize;
@@ -345,6 +385,8 @@ class IngestStore {
         totalFileSize = 0;
         formData.master.files.forEach(file => totalFileSize += file.size);
       }
+
+      yield this.AddContentAdminsGroupPermissions({objectId: createResponse.id});
 
       try {
         yield this.client.SetVisibility({
