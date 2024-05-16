@@ -343,10 +343,10 @@ class IngestStore {
       });
 
       if(!contentAdminGroupAddress) {
-      throw "Unable to determine content admins group address";
-    }
+        throw "Unable to determine content admins group address";
+      }
 
-    return contentAdminGroupAddress;
+      return contentAdminGroupAddress;
     } catch(error) {
       // eslint-disable-next-line no-console
       console.error("Error retrieving content admins group:");
@@ -950,7 +950,8 @@ class IngestStore {
           done = true;
 
           await this.GenerateEmbedUrl({
-            objectId: masterObjectId
+            objectId: masterObjectId,
+            mezId: objectId
           });
 
           try {
@@ -1104,8 +1105,8 @@ class IngestStore {
     }
   });
 
-  GenerateEmbedUrl = flow(function * ({objectId}) {
-    const url = yield this.client.EmbedUrl({objectId});
+  GenerateEmbedUrl = flow(function * ({objectId, mezId}) {
+    const url = yield this.client.EmbedUrl({objectId: mezId});
 
     this.UpdateIngestObject({
       id: objectId,

@@ -273,7 +273,10 @@ const JobDetails = observer(() => {
                   <button
                     type="button"
                     className="job-details__card-button primary-button"
-                    onClick={() => ingestStore.GenerateEmbedUrl({objectId: jobId})}
+                    onClick={() => ingestStore.GenerateEmbedUrl({
+                      objectId: jobId,
+                      mezId: ingestStore.jobs[jobId].mezObjectId
+                    })}
                   >
                     Create embed URL
                   </button>
