@@ -236,15 +236,21 @@ class IngestStore {
         const libraryIds = yield this.client.ContentLibraries() || [];
         yield Promise.all(
           libraryIds.map(async libraryId => {
-            const response = (await this.client.ContentObjectMetadata({
-              libraryId,
-              objectId: libraryId.replace(/^ilib/, "iq__"),
-              select: [
-                "public/name",
-                "abr",
-                "elv/media/drm/fps/cert"
-              ]
-            }));
+            let response;
+            try {
+              response = (await this.client.ContentObjectMetadata({
+                libraryId,
+                objectId: libraryId.replace(/^ilib/, "iq__"),
+                select: [
+                  "public/name",
+                  "abr",
+                  "elv/media/drm/fps/cert"
+                ]
+              }));
+              console.log("response", response);
+            } catch(error) {
+              console.error(`Unable to load metadata for ${libraryId}`);
+            }
 
             if(!response) { return; }
 
