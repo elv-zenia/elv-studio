@@ -120,6 +120,7 @@ const S3Access = ({
 };
 
 const Form = observer(() => {
+  const isMounted = useRef(false);
   const [isCreating, setIsCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("message");
   const [errorTitle, setErrorTitle] = useState("title");
@@ -153,6 +154,14 @@ const Form = observer(() => {
   const [s3Copy, setS3Copy] = useState(false);
   const [s3PresignedUrl, setS3PresignedUrl] = useState();
   const [s3UseAKSecret, setS3UseAKSecret] = useState(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const defaultType = Object.keys(ingestStore.contentTypes || {})
@@ -418,7 +427,9 @@ const Form = observer(() => {
         setMasterObjectId(createResponse.id);
       }
     } finally {
-      setIsCreating(false);
+      if(isMounted.current) {
+        setIsCreating(false);
+      }
     }
   };
 

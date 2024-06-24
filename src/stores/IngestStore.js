@@ -395,13 +395,13 @@ class IngestStore {
         formData.master.files.forEach(file => totalFileSize += file.size);
       }
 
-      // yield this.AddContentAdminsGroupPermissions({objectId: createResponse.id});
+      yield this.AddContentAdminsGroupPermissions({objectId: createResponse.id});
 
       try {
-        // yield this.client.SetVisibility({
-        //   id: createResponse.id,
-        //   visibility: 0
-        // });
+        yield this.client.SetVisibility({
+          id: createResponse.id,
+          visibility: 0
+        });
 
         formData.contentType = mezContentType;
         formData.master.writeToken = createResponse.writeToken;
@@ -440,7 +440,7 @@ class IngestStore {
     title,
     displayTitle,
     abr,
-    // accessGroupAddress,
+    accessGroupAddress,
     playbackEncryption="clear",
     description,
     s3Url,
@@ -743,18 +743,18 @@ class IngestStore {
       }
     }
 
-    // if(accessGroupAddress) {
-    //   try {
-    //     yield this.client.AddContentObjectGroupPermission({objectId: masterObjectId, groupAddress: accessGroupAddress, permission: "manage"});
-    //   } catch(error) {
-    //     return this.HandleError({
-    //       step: "ingest",
-    //       errorMessage: `Unable to add group permission for group: ${accessGroupAddress}`,
-    //       error,
-    //       id: masterObjectId
-    //     });
-    //   }
-    // }
+    if(accessGroupAddress) {
+      try {
+        yield this.client.AddContentObjectGroupPermission({objectId: masterObjectId, groupAddress: accessGroupAddress, permission: "manage"});
+      } catch(error) {
+        return this.HandleError({
+          step: "ingest",
+          errorMessage: `Unable to add group permission for group: ${accessGroupAddress}`,
+          error,
+          id: masterObjectId
+        });
+      }
+    }
 
     if(playbackEncryption !== "custom") {
       let abrProfileExclude = this.RestrictAbrProfile({playbackEncryption, abrProfile});
@@ -786,7 +786,7 @@ class IngestStore {
   CreateABRMezzanine = flow(function * ({
     libraryId,
     masterObjectId,
-    // accessGroupAddress,
+    accessGroupAddress,
     abrProfile,
     name,
     description,
@@ -799,7 +799,7 @@ class IngestStore {
     variant="default",
     offeringKey="default",
     access=[],
-    // permission,
+    permission,
     jobId
   }) {
     let createResponse;
@@ -828,19 +828,20 @@ class IngestStore {
     }
     const objectId = createResponse.id;
 
-    // try {
-    //   yield this.client.SetPermission({
-    //     objectId,
-    //     permission
-    //   });
-    // } catch(error) {
-    //   return this.HandleError({
-    //     step: "ingest",
-    //     errorMessage: "Unable to set permission level.",
-    //     error,
-    //     id: masterObjectId
-    //   });
-    // }
+    try {
+      yield this.client.SetPermission({
+        objectId,
+        writeToken,
+        permission
+      });
+    } catch(error) {
+      return this.HandleError({
+        step: "ingest",
+        errorMessage: "Unable to set permission level.",
+        error,
+        id: masterObjectId
+      });
+    }
 
     try {
       const response = yield this.client.StartABRMezzanineJobs({
@@ -940,7 +941,7 @@ class IngestStore {
                 libraryId,
                 masterObjectId: jobIdRef,
                 abrProfile,
-                accessGroup : accessGroupAddress,
+                accessGroup: accessGroupAddress,
                 name,
                 description,
                 displayTitle,
