@@ -60,18 +60,12 @@ const JobDetails = observer(() => {
 
     if(!response) { return; }
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    await ingestStore.WaitForPublish({
-      hash: response.hash,
-      objectId: jobId,
-      libraryId: libraryId
-    });
-
     await ingestStore.CreateABRMezzanine({
       libraryId: mezFormData.libraryId,
       masterObjectId: response.id,
       masterVersionHash: response.hash,
+      masterWriteToken: (response.id || response.hash) ? undefined : writeToken,
+      writeToken: writeToken,
       abrProfile: response.abrProfile,
       type: contentType,
       name: mezFormData.name,
@@ -80,7 +74,8 @@ const JobDetails = observer(() => {
       displayTitle: mezFormData.displayTitle,
       newObject: mezFormData.newObject,
       access: JSON.parse(access),
-      permission: mezFormData.permission
+      permission: mezFormData.permission,
+      jobId: response.jobId
     });
   };
 
