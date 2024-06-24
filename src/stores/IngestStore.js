@@ -1,5 +1,5 @@
 import {flow, makeAutoObservable} from "mobx";
-import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
+import {ValidateLibrary, ValidateWriteToken} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
 import {FileInfo} from "Utils/Files";
 import Path from "path";
@@ -247,7 +247,6 @@ class IngestStore {
                   "elv/media/drm/fps/cert"
                 ]
               }));
-              console.log("response", response);
             } catch(error) {
               console.error(`Unable to load metadata for ${libraryId}`);
             }
@@ -378,7 +377,11 @@ class IngestStore {
     }
   });
 
-  CreateContentObject = flow(function * ({libraryId, mezContentType, formData}) {
+  CreateContentObject = flow(function * ({
+    libraryId,
+    mezContentType,
+    formData
+  }) {
     let createResponse;
     let totalFileSize;
     try {
@@ -392,16 +395,16 @@ class IngestStore {
         formData.master.files.forEach(file => totalFileSize += file.size);
       }
 
-      yield this.AddContentAdminsGroupPermissions({objectId: createResponse.id});
+      // yield this.AddContentAdminsGroupPermissions({objectId: createResponse.id});
 
       try {
-        yield this.client.SetVisibility({
-          id: createResponse.id,
-          visibility: 0
-        });
+        // yield this.client.SetVisibility({
+        //   id: createResponse.id,
+        //   visibility: 0
+        // });
 
         formData.contentType = mezContentType;
-        formData.master.writeToken = createResponse.write_token;
+        formData.master.writeToken = createResponse.writeToken;
 
         this.UpdateIngestObject({
           id: createResponse.id,
@@ -415,7 +418,7 @@ class IngestStore {
             size: totalFileSize,
             masterLibraryId: libraryId,
             masterObjectId: createResponse.id,
-            masterWriteToken: createResponse.write_token,
+            masterWriteToken: createResponse.writeToken,
             masterNodeUrl: createResponse.nodeUrl,
             contentType: mezContentType
           }
@@ -437,7 +440,7 @@ class IngestStore {
     title,
     displayTitle,
     abr,
-    accessGroupAddress,
+    // accessGroupAddress,
     playbackEncryption="clear",
     description,
     s3Url,
@@ -447,6 +450,12 @@ class IngestStore {
     writeToken
   }) {
     ValidateLibrary(libraryId);
+
+    if(writeToken) {
+      ValidateWriteToken(writeToken);
+    }
+
+    const finalize = !writeToken;
 
     this.UpdateIngestObject({
       id: masterObjectId,
@@ -715,35 +724,37 @@ class IngestStore {
 
     // Finalize object
     let finalizeResponse;
-    try {
-      finalizeResponse = yield this.client.FinalizeContentObject({
-        libraryId,
-        objectId: masterObjectId,
-        writeToken,
-        commitMessage: "Create master object",
-        awaitCommitConfirmation: false
-      });
-    } catch(error) {
-      return this.HandleError({
-        step: "ingest",
-        errorMessage: "Unable to finalize production master.",
-        error,
-        id: masterObjectId
-      });
-    }
-
-    if(accessGroupAddress) {
+    if(finalize) {
       try {
-        yield this.client.AddContentObjectGroupPermission({objectId: masterObjectId, groupAddress: accessGroupAddress, permission: "manage"});
+        finalizeResponse = yield this.client.FinalizeContentObject({
+          libraryId,
+          objectId: masterObjectId,
+          writeToken,
+          commitMessage: "Create master object",
+          awaitCommitConfirmation: false
+        });
       } catch(error) {
         return this.HandleError({
           step: "ingest",
-          errorMessage: `Unable to add group permission for group: ${accessGroupAddress}`,
+          errorMessage: "Unable to finalize production master.",
           error,
           id: masterObjectId
         });
       }
     }
+
+    // if(accessGroupAddress) {
+    //   try {
+    //     yield this.client.AddContentObjectGroupPermission({objectId: masterObjectId, groupAddress: accessGroupAddress, permission: "manage"});
+    //   } catch(error) {
+    //     return this.HandleError({
+    //       step: "ingest",
+    //       errorMessage: `Unable to add group permission for group: ${accessGroupAddress}`,
+    //       error,
+    //       id: masterObjectId
+    //     });
+    //   }
+    // }
 
     if(playbackEncryption !== "custom") {
       let abrProfileExclude = this.RestrictAbrProfile({playbackEncryption, abrProfile});
@@ -761,7 +772,8 @@ class IngestStore {
     }
 
     return Object.assign(
-      finalizeResponse, {
+      finalizeResponse || {}, {
+        jobId: masterObjectId,
         abrProfile,
         access,
         errors: errors || [],
@@ -774,20 +786,25 @@ class IngestStore {
   CreateABRMezzanine = flow(function * ({
     libraryId,
     masterObjectId,
-    accessGroupAddress,
+    // accessGroupAddress,
     abrProfile,
     name,
     description,
     displayTitle,
     masterVersionHash,
+    masterWriteToken,
+    writeToken,
     type,
     newObject=false,
     variant="default",
     offeringKey="default",
     access=[],
-    permission
+    // permission,
+    jobId
   }) {
     let createResponse;
+    const jobIdRef = masterObjectId || jobId;
+
     try {
       createResponse = yield this.client.CreateABRMezzanine({
         libraryId,
@@ -795,6 +812,8 @@ class IngestStore {
         type,
         name,
         masterVersionHash,
+        masterWriteToken,
+        writeToken,
         abrProfile,
         variant,
         offeringKey
@@ -804,47 +823,37 @@ class IngestStore {
         step: "ingest",
         errorMessage: "Unable to create mezzanine object.",
         error,
-        id: masterObjectId
+        id: jobIdRef
       });
     }
     const objectId = createResponse.id;
 
-    yield this.WaitForPublish({
-      hash: createResponse.hash,
-      libraryId,
-      objectId
-    });
+    // try {
+    //   yield this.client.SetPermission({
+    //     objectId,
+    //     permission
+    //   });
+    // } catch(error) {
+    //   return this.HandleError({
+    //     step: "ingest",
+    //     errorMessage: "Unable to set permission level.",
+    //     error,
+    //     id: masterObjectId
+    //   });
+    // }
 
-    try {
-      yield this.client.SetPermission({
-        objectId,
-        permission
-      });
-    } catch(error) {
-      return this.HandleError({
-        step: "ingest",
-        errorMessage: "Unable to set permission level.",
-        error,
-        id: masterObjectId
-      });
-    }
-
-    let writeToken;
-    let hash;
     try {
       const response = yield this.client.StartABRMezzanineJobs({
         libraryId,
         objectId,
+        writeToken,
         access
       });
 
-      writeToken = response.writeToken;
-      hash = response.hash;
-
       this.UpdateIngestObject({
-        id: masterObjectId,
+        id: jobIdRef,
         data: {
-          ...this.jobs[masterObjectId],
+          ...this.jobs[jobIdRef],
           mezLibraryId: libraryId,
           mezObjectId: objectId,
           mezWriteToken: writeToken,
@@ -856,15 +865,9 @@ class IngestStore {
         step: "ingest",
         errorMessage: "Unable to start ABR mezzanine jobs.",
         error,
-        id: masterObjectId
+        id: jobIdRef
       });
     }
-
-    yield this.WaitForPublish({
-      hash,
-      libraryId,
-      objectId
-    });
 
     let done;
     let errorState;
@@ -874,7 +877,8 @@ class IngestStore {
       try {
         status = yield this.client.LROStatus({
           libraryId,
-          objectId
+          objectId,
+          writeToken
         });
       } catch(error) {
         errorState = true;
@@ -884,7 +888,7 @@ class IngestStore {
           step: "ingest",
           errorMessage: "Failed to get LRO status.",
           error,
-          id: masterObjectId
+          id: jobIdRef
         });
       }
 
@@ -895,7 +899,7 @@ class IngestStore {
         return this.HandleError({
           step: "ingest",
           errorMessage: "Received no job status information from server.",
-          id: masterObjectId
+          id: jobIdRef
         });
       }
 
@@ -914,16 +918,16 @@ class IngestStore {
           return this.HandleError({
             step: "ingest",
             errorMessage: "Unable to transcode selected file.",
-            id: masterObjectId
+            id: jobIdRef
           });
         }
 
         const {estimated_time_left_seconds, estimated_time_left_h_m_s, run_state} = enhancedStatus.result.summary;
 
         this.UpdateIngestObject({
-          id: masterObjectId,
+          id: jobIdRef,
           data: {
-            ...this.jobs[masterObjectId],
+            ...this.jobs[jobIdRef],
             mezObjectId: objectId,
             ingest: {
               runState: run_state,
@@ -931,10 +935,10 @@ class IngestStore {
               (estimated_time_left_seconds === undefined && run_state === "running") ? "Calculating..." : estimated_time_left_h_m_s ? `${estimated_time_left_h_m_s} remaining` : ""
             },
             formData: {
-              ...this.jobs[masterObjectId].formData,
+              ...this.jobs[jobIdRef].formData,
               mez: {
                 libraryId,
-                masterObjectId,
+                masterObjectId: jobIdRef,
                 abrProfile,
                 accessGroup : accessGroupAddress,
                 name,
@@ -956,7 +960,7 @@ class IngestStore {
           done = true;
 
           await this.GenerateEmbedUrl({
-            objectId: masterObjectId,
+            objectId: jobIdRef,
             mezId: objectId
           });
 
@@ -984,14 +988,15 @@ class IngestStore {
               step: "ingest",
               errorMessage: "Unable to update metadata.",
               error,
-              id: masterObjectId
+              id: jobIdRef
             });
           }
 
           this.FinalizeABRMezzanine({
             libraryId,
             objectId,
-            masterObjectId
+            masterObjectId: jobIdRef,
+            writeToken
           });
 
           if(accessGroupAddress) {
@@ -1005,7 +1010,7 @@ class IngestStore {
                 step: "ingest",
                 errorMessage: `Unable to add group permission for group: ${accessGroupAddress}`,
                 error,
-                id: masterObjectId
+                id: jobIdRef
               });
             }
           }
@@ -1069,7 +1074,12 @@ class IngestStore {
     }
   });
 
-  FinalizeABRMezzanine = flow(function * ({libraryId, objectId, masterObjectId}) {
+  FinalizeABRMezzanine = flow(function * ({
+    libraryId,
+    objectId,
+    masterObjectId,
+    writeToken
+  }) {
     this.UpdateIngestObject({
       id: masterObjectId,
       data: {
@@ -1081,10 +1091,11 @@ class IngestStore {
     try {
       const finalizeAbrResponse = yield this.client.FinalizeABRMezzanine({
         libraryId,
-        objectId
+        objectId,
+        writeToken
       });
 
-      const formData = this.jobs[masterObjectId].formData;
+      const formData = this.jobs[masterObjectId || finalizeAbrResponse.id].formData;
       delete formData.master.abr;
 
       this.UpdateIngestObject({
