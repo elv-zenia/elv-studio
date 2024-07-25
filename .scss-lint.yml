@@ -1,5 +1,5 @@
 files:
-  include: "src/static/stylesheets/*.scss"
+  include: "src/assets/stylesheets/*.scss"
 rules:
   class-name-format:
     - 2
