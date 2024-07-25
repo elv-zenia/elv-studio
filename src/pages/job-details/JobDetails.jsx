@@ -179,7 +179,7 @@ const JobDetails = observer(() => {
       {
         label: "Name",
         id: "object-name",
-        value: ingestStore.jobs[jobId].formData.master.title
+        value: ingestStore.jobs[jobId].formData?.master.title
       },
       {
         label: "Total File Size",
@@ -294,7 +294,7 @@ const JobDetails = observer(() => {
       <Dialog
         open={showErrorDialog}
         onOpenChange={() => setShowErrorDialog(false)}
-        title={`Error Log for ${ingestStore.jobs[jobId].formData.master.title || jobId}`}
+        title={`Error Log for ${ingestStore.jobs[jobId].formData?.master.title || jobId}`}
         hideCancelButton={true}
         confirmText="Close"
         size="MD"
@@ -311,7 +311,7 @@ const JobDetails = observer(() => {
 
   return (
     <div className="page-container">
-      <div className="page__header">Details for {ingestStore.jobs[jobId].formData.master.title || jobId}</div>
+      <div className="page__header">Details for {ingestStore.jobs[jobId].formData?.master.title || jobId}</div>
       <div className="job-details">
         { JobInfo() }
 
