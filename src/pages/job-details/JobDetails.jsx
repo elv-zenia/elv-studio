@@ -104,7 +104,7 @@ const JobDetails = observer(() => {
   };
 
   const JobInfo = () => {
-    const separateMasterMez = ingestStore.jobs[jobId].formData.mez.newObject;
+    const separateMasterMez = ingestStore.jobs[jobId].formData?.mez.newObject;
 
     const idPrefix = separateMasterMez ? "master" : "master-mez";
 
@@ -246,7 +246,7 @@ const JobDetails = observer(() => {
                 type="button"
                 className="job-details__card__inline-link"
                 onClick={() => OpenObjectLink({
-                  libraryId: ingestStore.jobs[jobId].formData.mez.libraryId,
+                  libraryId: ingestStore.jobs[jobId].formData?.mez.libraryId,
                   objectId: ingestStore.jobs[jobId].finalize.objectId
                 })} >
                 <span>{ ingestStore.jobs[jobId].finalize.objectId }</span>
