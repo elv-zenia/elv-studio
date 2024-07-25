@@ -1,12 +1,12 @@
 import {flow, makeAutoObservable} from "mobx";
 import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
-import {FileInfo} from "Utils/Files";
+import {FileInfo} from "@/utils/Files";
 import Path from "path";
-import {DrmPublicProfile, DrmWidevineFairplayProfile} from "Utils/ABR";
-const ABR = require("@eluvio/elv-abr-profile");
-const defaultOptions = require("@eluvio/elv-lro-status/defaultOptions");
-const enhanceLROStatus = require("@eluvio/elv-lro-status/enhanceLROStatus");
+import {DrmPublicProfile, DrmWidevineFairplayProfile} from "@/utils/ABR";
+import ABR from "@eluvio/elv-abr-profile";
+import defaultOptions from "@eluvio/elv-lro-status/defaultOptions";
+import enhanceLROStatus from "@eluvio/elv-lro-status/enhanceLROStatus";
 
 class IngestStore {
   libraries;
@@ -150,6 +150,7 @@ class IngestStore {
           yield new Promise(resolve => setTimeout(resolve, 15000));
         }
       } catch(error) {
+        // eslint-disable-next-line no-console
         console.error(`Waiting for master object publishing hash:${hash}. Retrying.`, error);
         yield new Promise(resolve => setTimeout(resolve, 7000));
       }
@@ -192,6 +193,7 @@ class IngestStore {
       }
     });
 
+    // eslint-disable-next-line no-console
     console.error(errorMessage, error);
     throw error;
   }
@@ -223,6 +225,7 @@ class IngestStore {
 
       this.contentTypes = Object.fromEntries(sortedTypes);
     } catch(error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load content types", error);
     }
   });
@@ -247,8 +250,8 @@ class IngestStore {
                   "elv/media/drm/fps/cert"
                 ]
               }));
-              console.log("response", response);
             } catch(error) {
+              // eslint-disable-next-line no-console
               console.error(`Unable to load metadata for ${libraryId}`);
             }
 
@@ -314,6 +317,7 @@ class IngestStore {
         this.libraries = Object.fromEntries(sortedArray);
       }
     } catch(error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load libraries", error);
     }
   });
@@ -334,6 +338,7 @@ class IngestStore {
           });
       }
     } catch(error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load access groups", error);
     }
   });
@@ -423,9 +428,11 @@ class IngestStore {
 
         return createResponse;
       } catch(error) {
+        // eslint-disable-next-line no-console
         console.error("Unable to set visibility.", error);
       }
     } catch(error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to create content object.", error);
       return { error };
     }

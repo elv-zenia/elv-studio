@@ -1,0 +1,88 @@
+.job-details {
+  &__section-header {
+    margin-bottom: 1rem;
+  }
+
+  &__card {
+    align-items: center;
+    background-color: $gray5;
+    border-radius: 7px;
+    display: flex;
+    margin-bottom: 1rem;
+    padding: 1.5rem 1rem;
+    width: 630px;
+
+    &--secondary {
+      background-color: unset;
+      border: 1px solid rgba($gray4, 0.5);
+    }
+
+    &__failed-text {
+      color: $red;
+    }
+
+    &__icon,
+    &__failed-text {
+      margin-left: auto;
+    }
+
+    &__inline-link {
+      color: $blue;
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-align: left;
+      text-overflow: ellipsis;
+    }
+
+    &__text {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+
+      &__description {
+        font-size: 0.875rem;
+        font-weight: 400;
+        overflow: hidden;
+        padding-top: 0.25rem;
+        white-space: nowrap;
+
+        &__icon {
+          height: 20px;
+          width: 20px;
+        }
+      }
+    }
+  }
+
+  &__error {
+    color: $red;
+    width: 630px;
+  }
+
+  &__job-info {
+    margin-bottom: 1rem;
+    width: 632px;
+
+    &__row {
+      display: flex;
+      width: 100%;
+
+      &--indent {
+        margin-left: 1.5rem;
+        width: calc(100% - 1.5rem);
+      }
+    }
+
+    &__label {
+      font-weight: 500;
+      padding-right: 0.5rem;
+      white-space: nowrap;
+    }
+
+    &__value {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+}

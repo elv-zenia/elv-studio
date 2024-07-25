@@ -1,6 +1,6 @@
-const defaultAbrDrmProfile = require("./profiles/abrProfileDrm.json");
-const defaultAbrClearProfile = require("./profiles/abrProfileClear.json");
-const defaultAbrBothProfile = require("./profiles/abrProfileBoth.json");
+import defaultAbrDrmProfile from "./profiles/abrProfileDrm.json";
+import defaultAbrClearProfile from "./profiles/abrProfileClear.json";
+import defaultAbrBothProfile from "./profiles/abrProfileBoth.json";
 
 /**
  * Manipulate ABR Profile to return only Widevine and
