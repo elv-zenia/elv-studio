@@ -13,6 +13,8 @@ import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "@/componen
 import InlineNotification from "@/components/common/InlineNotification";
 import {CloseIcon} from "@/assets/icons";
 import {rootStore} from "@/stores/index.js";
+import {Box} from "@mantine/core";
+import AdvancedSection from "@/pages/create/AdvancedSection.jsx";
 
 const ErrorMessaging = ({errorTitle, errorMessage}) => {
   const errorRef = useRef(null);
@@ -50,7 +52,7 @@ const Permissions = ({permission, setPermission}) => {
   const permissionLevels = rootStore.client.permissionLevels;
 
   return (
-    <div className="form__permission-info">
+    <Box mb={16}>
       <Select
         label="Permission"
         labelDescription="Set a permission level."
@@ -73,7 +75,7 @@ const Permissions = ({permission, setPermission}) => {
           ))
         }
       />
-    </div>
+    </Box>
   );
 };
 
@@ -122,8 +124,8 @@ const S3Access = ({
 
 const Create = observer(() => {
   const [isCreating, setIsCreating] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("message");
-  const [errorTitle, setErrorTitle] = useState("title");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [errorTitle, setErrorTitle] = useState("");
   const [masterObjectId, setMasterObjectId] = useState();
   const [uploadMethod, setUploadMethod] = useState("local");
   const [files, setFiles] = useState([]);
@@ -154,6 +156,8 @@ const Create = observer(() => {
   const [s3Copy, setS3Copy] = useState(false);
   const [s3PresignedUrl, setS3PresignedUrl] = useState();
   const [s3UseAKSecret, setS3UseAKSecret] = useState(false);
+
+  const [useAdvancedSettings, setUseAdvancedSettings] = useState(false);
 
   useEffect(() => {
     const defaultType = Object.keys(ingestStore.contentTypes || {})
@@ -603,8 +607,6 @@ const Create = observer(() => {
             onChange={event => setAccessGroup(event.target.value)}
           />
 
-          <Permissions permission={permission} setPermission={setPermission} />
-
           <Checkbox
             label="Use Master Object as Mezzanine Object"
             value={useMasterAsMez}
@@ -670,21 +672,30 @@ const Create = observer(() => {
             />
           }
 
-          <Select
-            label="Mezzanine Content Type"
-            labelDescription="This will determine the type for the mezzanine object creation. Enter a valid object ID, version hash, or title."
-            formName="mezContentType"
-            required={true}
-            options={Object.keys(ingestStore.contentTypes || {}).map(typeId => (
-              {value: typeId, label: ingestStore.contentTypes[typeId].name}
-            ))}
-            defaultOption={{
-              value: "",
-              label: "Select Content Type"
-            }}
-            value={mezContentType}
-            onChange={event => setMezContentType(event.target.value)}
-          />
+          <AdvancedSection
+            useAdvancedSettings={useAdvancedSettings}
+            setUseAdvancedSettings={setUseAdvancedSettings}
+          >
+            <Permissions permission={permission} setPermission={setPermission} />
+
+            <Box mb={16}>
+              <Select
+                label="Mezzanine Content Type"
+                labelDescription="This will determine the type for the mezzanine object creation. Enter a valid object ID, version hash, or title."
+                formName="mezContentType"
+                required={true}
+                options={Object.keys(ingestStore.contentTypes || {}).map(typeId => (
+                  {value: typeId, label: ingestStore.contentTypes[typeId].name}
+                ))}
+                defaultOption={{
+                  value: "",
+                  label: "Select Content Type"
+                }}
+                value={mezContentType}
+                onChange={event => setMezContentType(event.target.value)}
+              />
+            </Box>
+          </AdvancedSection>
 
           <div>
             <input
