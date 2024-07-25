@@ -26,7 +26,7 @@ const Tooltip = ({
     height: 16,
     width: 16,
     color: "#404040"
-  }
+  };
 
   return (
     <div className={`tooltip ${className}`}>

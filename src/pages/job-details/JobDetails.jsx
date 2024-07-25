@@ -307,7 +307,7 @@ const JobDetails = observer(() => {
   const iconProps = {
     width: 20,
     height: 20
-  }
+  };
 
   return (
     <div className="page-container">
