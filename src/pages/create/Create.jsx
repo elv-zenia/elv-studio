@@ -3,7 +3,7 @@ import {Navigate} from "react-router-dom";
 import {observer} from "mobx-react-lite";
 import PrettyBytes from "pretty-bytes";
 
-import {ingestStore} from "@/stores";
+import {ingestStore, tenantStore} from "@/stores";
 import {s3Regions} from "@/utils";
 import {abrProfileClear, abrProfileBoth} from "@/utils/ABR";
 
@@ -137,7 +137,7 @@ const Create = observer(() => {
   const [permission, setPermission] = useState("editable");
 
   const [mezLibrary, setMezLibrary] = useState();
-  const [mezContentType, setMezContentType] = useState();
+  const [mezContentType, setMezContentType] = useState("");
 
   const [displayTitle, setDisplayTitle] = useState();
   const [playbackEncryption, setPlaybackEncryption] = useState("");
@@ -160,20 +160,26 @@ const Create = observer(() => {
   const [useAdvancedSettings, setUseAdvancedSettings] = useState(false);
 
   useEffect(() => {
-    const defaultType = Object.keys(ingestStore.contentTypes || {})
-      .find(id => {
-        if(
-          ingestStore.contentTypes[id] &&
-          ingestStore.contentTypes[id].name.toLowerCase().includes("title")
-        ) {
-          return id;
-        }
-      });
+    if(tenantStore.loaded) {
+      if(tenantStore.titleContentType) {
+        setMezContentType(tenantStore.titleContentType);
+      } else {
+        const defaultType = Object.keys(ingestStore.contentTypes || {})
+          .find(id => {
+            if(
+              ingestStore.contentTypes[id] &&
+              ingestStore.contentTypes[id].name.toLowerCase().includes("title")
+            ) {
+              return id;
+            }
+          });
 
-    if(defaultType) {
-      setMezContentType(defaultType);
+        if(defaultType) {
+          setMezContentType(defaultType);
+        }
+      }
     }
-  }, [ingestStore.contentTypes]);
+  }, [ingestStore.contentTypes, tenantStore.loaded, tenantStore.titleContentType]);
 
   useEffect(() => {
     if(!ingestStore.libraries || !ingestStore.GetLibrary(masterLibrary)) { return; }

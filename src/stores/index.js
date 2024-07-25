@@ -1,6 +1,7 @@
 import {configure, flow, makeObservable, observable} from "mobx";
 import {FrameClient} from "@eluvio/elv-client-js/src/FrameClient";
 import IngestStore from "@/stores/IngestStore";
+import TenantStore from "@/stores/TenantStore.js";
 
 // Force strict mode so mutations are only allowed within actions.
 configure({
@@ -21,6 +22,7 @@ class RootStore {
 
     this.Initialize();
     this.ingestStore = new IngestStore(this);
+    this.tenantStore = new TenantStore(this);
   }
 
   Initialize = flow(function * () {
@@ -58,5 +60,6 @@ class RootStore {
 
 export const rootStore = new RootStore();
 export const ingestStore = rootStore.ingestStore;
+export const tenantStore = rootStore.tenantStore;
 
 window.rootStore = rootStore;
