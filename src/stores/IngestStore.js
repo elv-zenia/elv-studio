@@ -3,7 +3,7 @@ import {ValidateLibrary} from "@eluvio/elv-client-js/src/Validation";
 import UrlJoin from "url-join";
 import {FileInfo} from "@/utils/Files";
 import Path from "path";
-import {DrmPublicProfile, DrmWidevineFairplayProfile} from "@/utils/ABR";
+import {DrmPlayReadyWidevine, DrmPublicProfile, DrmWidevineFairplayProfile} from "@/utils/ABR";
 import ABR from "@eluvio/elv-abr-profile";
 import defaultOptions from "@eluvio/elv-lro-status/defaultOptions";
 import enhanceLROStatus from "@eluvio/elv-lro-status/enhanceLROStatus";
@@ -161,7 +161,12 @@ class IngestStore {
     let abrProfileExclude;
 
     if(playbackEncryption === "drm-all") {
-      abrProfileExclude = ABR.ProfileExcludeClear(abrProfile);
+      const abrProfileClearExcluded = ABR.ProfileExcludeClear(abrProfile);
+      if(abrProfileClearExcluded.ok) {
+        abrProfileExclude = DrmPlayReadyWidevine({abrProfile: abrProfileClearExcluded.result});
+      } else {
+        abrProfileExclude = abrProfileClearExcluded;
+      }
     } else if(playbackEncryption === "drm-public") {
       abrProfileExclude = DrmPublicProfile({abrProfile});
     } else if(playbackEncryption === "drm-restricted") {

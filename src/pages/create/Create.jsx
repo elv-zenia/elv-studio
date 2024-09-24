@@ -653,7 +653,7 @@ const Create = observer(() => {
             required={true}
             options={[
               {value: "drm-public", label: "DRM - Public Access", disabled: disableDrmPublic, title: "Playout Formats: Dash Widevine, HLS Sample AES, HLS AES-128"},
-              {value: "drm-all", label: "DRM - All Formats", disabled: disableDrmAll, title: "Playout Formats: Dash Widevine, HLS Sample AES, HLS AES-128, HLS Fairplay"},
+              {value: "drm-all", label: "DRM - All Formats", disabled: disableDrmAll, title: "Playout Formats: Dash Widevine, HLS Sample AES, HLS AES-128, HLS Fairplay, HLS Widevine, HLS PlayReady"},
               {value: "drm-restricted", label: "DRM - Widevine and Fairplay", disabled: disableDrmRestricted},
               {value: "clear", label: "Clear", disabled: disableClear},
               {value: "custom", label: "Custom"}
