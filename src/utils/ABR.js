@@ -44,6 +44,40 @@ export const DrmPublicProfile = ({abrProfile}) => {
   };
 };
 
+/**
+ * Manipulate ABR Profile to include HLS Widevine and
+ * HLS PlayReady playout formats
+ * @param {Object=} abrProfile - ABR profile
+ *
+ * @returns {Object} - ABR Profile with the appropriate playout formats
+ */
+export const DrmPlayReadyWidevine = ({abrProfile}) => {
+  abrProfile.playout_formats["hls-widevine-cenc"] = {
+    "drm": {
+      "enc_scheme_name": "cenc",
+      "type": "DrmWidevine"
+    },
+    "protocol": {
+      "type": "ProtoHls"
+    }
+  };
+
+  abrProfile.playout_formats["hls-playready-cenc"] = {
+    "drm": {
+      "enc_scheme_name": "cenc",
+      "type": "DrmPlayReady"
+    },
+    "protocol": {
+      "type": "ProtoHls"
+    }
+  };
+
+  return {
+    ok: true,
+    result: abrProfile
+  };
+};
+
 export const abrProfileDrm = defaultAbrDrmProfile;
 export const abrProfileClear = defaultAbrClearProfile;
 export const abrProfileBoth = defaultAbrBothProfile;
