@@ -14,7 +14,7 @@ import InlineNotification from "@/components/common/InlineNotification";
 import {CloseIcon} from "@/assets/icons";
 import {rootStore} from "@/stores/index.js";
 import {Box} from "@mantine/core";
-import AdvancedSection from "@/pages/create/AdvancedSection.jsx";
+import AdvancedSection from "@/pages/create/advanced-section/AdvancedSection.jsx";
 
 const ErrorMessaging = ({errorTitle, errorMessage}) => {
   const errorRef = useRef(null);
