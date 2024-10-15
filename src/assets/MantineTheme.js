@@ -55,8 +55,8 @@ const theme = createTheme({
         },
         label: {
           lineHeight: 1,
-          paddingTop: "var(--mantine-spacing-xs)",
-          paddingBottom: "var(--mantine-spacing-xs)",
+          paddingTop: "var(--mantine-spacing-sm)",
+          paddingBottom: "var(--mantine-spacing-sm)",
           fontWeight: 600,
           color: "var(--mantine-color-elv-gray-8)"
         },

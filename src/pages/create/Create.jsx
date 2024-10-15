@@ -22,7 +22,11 @@ import {
   TextInput,
   Checkbox,
   Textarea,
-  Button
+  Button,
+  Flex,
+  Text,
+  ActionIcon,
+  Group
 } from "@mantine/core";
 import AdvancedSelect from "@/components/advanced-select/AdvancedSelect.jsx";
 import FormSectionTitle from "@/components/form-section-title/FormSectionTitle.jsx";
@@ -481,27 +485,39 @@ const Create = observer(() => {
                   id="main-dropzone"
                   onDrop={files => setFiles(files)}
                 />
-                <label>Files:</label>
-                <div className="file-list">
+                <Text mb={8}>Files:</Text>
+                <Flex direction="column" gap={0}>
                   {
                     files.map((file, index) => (
-                      <div className="file-list__item" key={`${file.name || file.path}-${index}`}>
-                        <span>{file.name || file.path}</span>
-                        <span>&nbsp;- {PrettyBytes(file.size || 0)}</span>
-                        <button
-                          type="button"
-                          title="Remove file"
-                          aria-label="Remove file"
-                          onClick={() => HandleRemove({index, files, SetFilesCallback: setFiles})}
-                          className="file-list__item__close-button"
+                      <Box
+                        key={`${file.name || file.path}-${index}`}
+                        bg="elv-gray.0"
+                        p={16}
+                        mb=".875rem"
+                      >
+                        <Flex
+                          direction="row"
+                          align="center"
+                          justify="space-between"
                         >
-                          <CloseIcon />
-                          {/*<ImageIcon className="file-list__item__close-button__icon" icon={CloseIcon} />*/}
-                        </button>
-                      </div>
+                          <Group>
+                            <Text>{file.name || file.path}</Text>
+                            <Text ml={4}>- {PrettyBytes(file.size || 0)}</Text>
+                          </Group>
+                          <ActionIcon
+                            title="Remove file"
+                            size="md"
+                            variant="transparent"
+                            ml={16}
+                            onClick={() => HandleRemove({index, files, SetFilesCallback: setFiles})}
+                          >
+                            <CloseIcon />
+                          </ActionIcon>
+                        </Flex>
+                      </Box>
                     ))
                   }
-                </div>
+                </Flex>
               </>
           }
 
