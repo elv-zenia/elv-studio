@@ -1,4 +1,4 @@
-import {Combobox, Input, InputBase, Text, Tooltip, useCombobox} from "@mantine/core";
+import {Combobox, Input, InputBase, Text, useCombobox} from "@mantine/core";
 
 // More complex Select component
 // Supports option description

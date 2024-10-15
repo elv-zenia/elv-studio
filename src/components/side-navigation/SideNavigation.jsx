@@ -1,9 +1,11 @@
 import {AppShell, Tooltip, NavLink} from "@mantine/core";
 import {useLocation, useNavigate} from "react-router-dom";
+import styles from "@/components/side-navigation/SideNavigation.module.css";
+import {CubeIcon, CubePlusIcon} from "@/assets/icons/index.jsx";
 
 const NAV_LINKS = [
-  {path: "/new", title: "Create"},
-  {path: "/content", title: "Content"},
+  {path: "/new", icon: <CubePlusIcon />, title: "Create"},
+  {path: "/content", icon: <CubeIcon />, title: "Content"},
 ];
 
 const SideNavigation = () => {
@@ -22,6 +24,7 @@ const SideNavigation = () => {
           >
             <NavLink
               key={`navigation-link-${path}`}
+              classNames={{section: styles.section}}
               href="#"
               onClick={() => navigate(path)}
               active={path === location.pathname}

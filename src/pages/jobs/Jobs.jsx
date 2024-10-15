@@ -3,6 +3,7 @@ import {observer} from "mobx-react-lite";
 import {ingestStore} from "@/stores";
 import Table from "@/components/common/Table";
 import Dialog from "@/components/common/Dialog";
+import PageContainer from "@/components/page-container/PageContainer.jsx";
 
 const Jobs = observer(() => {
   const [showClearJobsDialog, setShowClearJobsDialog] = useState(false);
@@ -34,8 +35,7 @@ const Jobs = observer(() => {
   };
 
   return (
-    <div className="page-container">
-      <div className="page__header">Ingest Jobs</div>
+    <PageContainer title="Ingest Jobs">
       <div className="jobs">
         <button
           className="primary-button jobs__button"
@@ -88,7 +88,7 @@ const Jobs = observer(() => {
           }
         />
       </div>
-    </div>
+    </PageContainer>
   );
 });
 
