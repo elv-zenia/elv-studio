@@ -7,10 +7,11 @@ import SideNavigation from "@/components/side-navigation/SideNavigation.jsx";
 import WarningDialog from "@/components/WarningDialog.jsx";
 import JobsWrapper from "@/pages/jobs/JobsWrapper.jsx";
 import {rootStore, uiStore} from "@/stores/index.js";
+import MantineTheme from "@/assets/MantineTheme.js";
 
 import {AppShell, Loader, MantineProvider} from "@mantine/core";
 import "@mantine/core/styles.css";
-import MantineTheme from "@/assets/MantineTheme.js";
+import "@mantine/dropzone/styles.css";
 
 const App = observer(() => {
   if(!rootStore.loaded) { return <PageLoader />; }

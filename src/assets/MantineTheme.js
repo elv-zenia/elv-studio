@@ -45,6 +45,18 @@ const theme = createTheme({
       "#71667e",
       "#665972",
       "#594c66"
+    ],
+    "elv-red": [
+      "#ffe9e6",
+      "#ffd3cd",
+      "#ffa69b",
+      "#ff7663",
+      "#ff4723", // eluvio color
+      "#ff3418",
+      "#ff2507",
+      "#e41600",
+      "#cc0e00",
+      "#b20000"
     ]
   },
   components: {

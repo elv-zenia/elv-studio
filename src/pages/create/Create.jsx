@@ -6,10 +6,9 @@ import PrettyBytes from "pretty-bytes";
 import {ingestStore, tenantStore, rootStore} from "@/stores";
 import {s3Regions} from "@/utils";
 import {abrProfileClear, abrProfileBoth} from "@/utils/ABR";
-import {CloseIcon} from "@/assets/icons";
+import {CloseIcon, ExclamationCircleIcon, UploadIcon} from "@/assets/icons";
 
 import PageContainer from "@/components/page-container/PageContainer.jsx";
-import Dropzone from "@/components/common/Dropzone";
 import FabricLoader from "@/components/FabricLoader";
 import InlineNotification from "@/components/common/InlineNotification";
 import AdvancedSection from "@/pages/create/advanced-section/AdvancedSection.jsx";
@@ -26,10 +25,12 @@ import {
   Flex,
   Text,
   ActionIcon,
-  Group
+  Group,
+  Divider
 } from "@mantine/core";
 import AdvancedSelect from "@/components/advanced-select/AdvancedSelect.jsx";
 import FormSectionTitle from "@/components/form-section-title/FormSectionTitle.jsx";
+import {Dropzone} from "@mantine/dropzone";
 
 const ErrorMessaging = ({errorTitle, errorMessage}) => {
   const errorRef = useRef(null);
@@ -145,6 +146,7 @@ const Create = observer(() => {
   const [masterObjectId, setMasterObjectId] = useState();
   const [uploadMethod, setUploadMethod] = useState("LOCAL");
   const [files, setFiles] = useState([]);
+
   const [abrProfile, setAbrProfile] = useState();
   const [masterLibrary, setMasterLibrary] = useState();
   const [accessGroup, setAccessGroup] = useState();
@@ -244,17 +246,6 @@ const Create = observer(() => {
     }
   }, [permission]);
 
-  useEffect(() => {
-    const hasSizeableFiles = files.some(file => file.size > 0);
-
-    if(!hasSizeableFiles && files.length > 0) {
-      setErrorTitle(`Empty ${files.length === 1 ? "File" : "Files"}.`);
-      setErrorMessage(`${files.length === 1 ? "This file contains" : "These files contain"} no data.`);
-    } else {
-      setErrorTitle("");
-      setErrorMessage("");
-    }
-  }, [files]);
 
   useEffect(() => {
     if(playbackEncryption === "custom" && !abrProfile) {
@@ -354,8 +345,8 @@ const Create = observer(() => {
       !name ||
       !playbackEncryption ||
       playbackEncryption === "custom" && !abrProfile ||
-      errorMessage ||
-      errorTitle ||
+      // Check for invalid files
+      (files.length > 0 && files.some(item => item.errors)) ||
       !mezContentType
     ) {
       return false;
@@ -460,7 +451,7 @@ const Create = observer(() => {
   }
 
   return (
-    <PageContainer title="Ingest New Video on Demand">
+    <PageContainer title="Ingest New Video on Demand" width="700px">
       <FabricLoader>
         <ErrorMessaging errorMessage={errorMessage} errorTitle={errorTitle} />
 
@@ -481,11 +472,56 @@ const Create = observer(() => {
             uploadMethod === "LOCAL" &&
               <>
                 <Dropzone
-                  accept={{"audio/*": [], "video/*": []}}
-                  id="main-dropzone"
                   onDrop={files => setFiles(files)}
-                />
-                <Text mb={8}>Files:</Text>
+                  onReject={fileRejections => {
+                    const fileObjects = fileRejections.map(item => (
+                      {
+                        ...item.file,
+                        errors: item.errors
+                      }
+                    ));
+                    setFiles(fileObjects);
+                  }}
+                  accept={{"audio/*": [], "video/*": []}}
+                  multiple={false}
+                  validator={(file) => {
+                    if(file.size === 0) {
+                      return {
+                        code: "size-empty",
+                        message: "This file contains no data"
+                      };
+                    }
+
+                    return null;
+                  }}
+                  mb={16}
+                >
+                  <Flex p="65 70" direction="column" justify="center">
+                    <Flex justify="center" mb={4}>
+                      <Dropzone.Accept>
+                        <UploadIcon />
+                      </Dropzone.Accept>
+                      <Dropzone.Reject>
+                        <CloseIcon
+                          style={{ width: "8rem", height: "8rem", color: "var(--mantine-color-red-6)" }}
+                          stroke={1.5}
+                        />
+                      </Dropzone.Reject>
+                      <Dropzone.Idle>
+                        <UploadIcon color="elv-gray.3" />
+                      </Dropzone.Idle>
+                    </Flex>
+
+                    <Stack justify="center" gap={0} align="center">
+                      <Text c="elv-gray.3" size="xs" mb={2}>Drag a video or audio file</Text>
+                      <Button variant="transparent" p={0} h="fit-content" size="xs">Upload a File</Button>
+                    </Stack>
+                  </Flex>
+                </Dropzone>
+                {
+                  files.length > 0 &&
+                  <Text mb={8}>Files:</Text>
+                }
                 <Flex direction="column" gap={0}>
                   {
                     files.map((file, index) => (
@@ -494,26 +530,44 @@ const Create = observer(() => {
                         bg="elv-gray.0"
                         p={16}
                         mb=".875rem"
+                        bd={file.errors ? "2px solid elv-red.4" : "1px solid transparent"}
                       >
-                        <Flex
-                          direction="row"
-                          align="center"
-                          justify="space-between"
-                        >
-                          <Group>
-                            <Text>{file.name || file.path}</Text>
-                            <Text ml={4}>- {PrettyBytes(file.size || 0)}</Text>
-                          </Group>
-                          <ActionIcon
-                            title="Remove file"
-                            size="md"
-                            variant="transparent"
-                            ml={16}
-                            onClick={() => HandleRemove({index, files, SetFilesCallback: setFiles})}
+                        <Stack>
+                          <Flex
+                            direction="row"
+                            align="center"
+                            justify="space-between"
                           >
-                            <CloseIcon />
-                          </ActionIcon>
-                        </Flex>
+                            <Group gap={5}>
+                              {
+                                file.errors &&
+                                <ExclamationCircleIcon color="var(--mantine-color-elv-red-4)" />
+                              }
+                              <Text>{file.name || file.path}</Text>
+                              <Text>- {PrettyBytes(file.size || 0)}</Text>
+                            </Group>
+                            <ActionIcon
+                              title="Remove file"
+                              size="md"
+                              variant="transparent"
+                              ml={16}
+                              onClick={() => HandleRemove({index, files, SetFilesCallback: setFiles})}
+                            >
+                              <CloseIcon />
+                            </ActionIcon>
+                          </Flex>
+                          {
+                            file.errors ?
+                              (
+                                <>
+                                  <Divider />
+                                  <Text c="elv-red.4">
+                                    { file.errors.map(item => item.message).join(", ") || "This file cannot be ingested" }
+                                  </Text>
+                                </>
+                              ) : null
+                          }
+                        </Stack>
                       </Box>
                     ))
                   }
