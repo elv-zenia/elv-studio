@@ -11,6 +11,7 @@ import Dialog from "@/components/common/Dialog";
 import JSONView from "@/components/common/JSONView";
 import {Alert, Box, Flex, Loader, UnstyledButton} from "@mantine/core";
 import styles from "./JobDetails.module.css";
+import PageContainer from "@/components/page-container/PageContainer.jsx";
 
 const JobDetails = observer(() => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
@@ -315,8 +316,7 @@ const JobDetails = observer(() => {
   };
 
   return (
-    <div className="page-container">
-      <div className="page__header">Details for {ingestStore.jobs[jobId].formData?.master.title || jobId}</div>
+    <PageContainer title={`Details for ${ingestStore.jobs[jobId].formData?.master.title || jobId}`}>
       <div className="job-details">
         { JobInfo() }
 
@@ -380,7 +380,7 @@ const JobDetails = observer(() => {
         { ErrorNotification() }
         { ErrorDialog() }
       </div>
-    </div>
+    </PageContainer>
   );
 });
 
