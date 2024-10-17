@@ -21,9 +21,10 @@ const AlertMessage = ({error}) => {
         variant="light"
         color="elv-red.4"
         title={title}
-        message={message}
         withCloseButton
-      />
+      >
+        { message }
+      </Alert>
     </Box>
   );
 };

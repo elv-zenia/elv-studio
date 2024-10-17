@@ -69,7 +69,7 @@ const Jobs = observer(() => {
             Object.keys(ingestStore.jobs).map(jobId => (
               {
                 id: jobId,
-                link: `/jobs/${jobId}`,
+                link: `/content/${jobId}`,
                 cells: [
                   {
                     label: (

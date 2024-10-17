@@ -6,11 +6,11 @@ import PrettyBytes from "pretty-bytes";
 import {ingestStore, rootStore} from "@/stores";
 import {PageLoader} from "@/components/common/Loader";
 import {Copyable} from "@/components/common/Copyable";
-import {CheckmarkIcon} from "@/assets/icons";
-import InlineNotification from "@/components/common/InlineNotification";
+import {CheckmarkIcon, ExclamationCircleIcon} from "@/assets/icons";
 import Dialog from "@/components/common/Dialog";
 import JSONView from "@/components/common/JSONView";
-import {Loader} from "@mantine/core";
+import {Alert, Box, Flex, Loader, UnstyledButton} from "@mantine/core";
+import styles from "./JobDetails.module.css";
 
 const JobDetails = observer(() => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
@@ -91,15 +91,20 @@ const JobDetails = observer(() => {
     const fallbackErrorMessage = "Unable to create media playable object.";
 
     return (
-      <div className="job-details__error">
-        <InlineNotification
-          type="error"
-          message={ingestStore.jobs[jobId].errorMessage || fallbackErrorMessage}
-          hideCloseButton={true}
-          actionText={ingestStore.jobs[jobId].errorLog ?  "Learn More" : undefined}
-          ActionCallback={() => setShowErrorDialog(true)}
-        />
-      </div>
+      <Box w="630px">
+        <Alert
+          variant="light"
+          color="var(--mantine-color-elv-red-8)"
+          icon={<ExclamationCircleIcon />}
+        >
+          <Flex justify="space-between" align="center">
+            { ingestStore.jobs[jobId].errorMessage || fallbackErrorMessage }
+            <UnstyledButton onClick={() => setShowErrorDialog(true)} className={styles.textButton}>
+              Learn More
+            </UnstyledButton>
+          </Flex>
+        </Alert>
+      </Box>
     );
   };
 

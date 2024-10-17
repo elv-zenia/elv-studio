@@ -426,7 +426,7 @@ const Create = observer(() => {
   };
 
   if(masterObjectId) {
-    return <Navigate to={`/jobs/${masterObjectId}`} replace />;
+    return <Navigate to={`/content/${masterObjectId}`} replace />;
   }
 
   return (
