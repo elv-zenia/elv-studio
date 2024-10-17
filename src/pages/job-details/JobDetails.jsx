@@ -6,12 +6,24 @@ import PrettyBytes from "pretty-bytes";
 import {ingestStore, rootStore} from "@/stores";
 import {PageLoader} from "@/components/common/Loader";
 import {Copyable} from "@/components/common/Copyable";
-import {CheckmarkIcon, ExclamationCircleIcon} from "@/assets/icons";
+import {CheckmarkIcon, ClipboardIcon, ExclamationCircleIcon} from "@/assets/icons";
 import Dialog from "@/components/common/Dialog";
 import JSONView from "@/components/common/JSONView";
-import {Alert, Box, Flex, Loader, UnstyledButton} from "@mantine/core";
+import {
+  ActionIcon,
+  Alert,
+  Box,
+  CopyButton,
+  Flex,
+  Loader,
+  Text,
+  Title,
+  Tooltip,
+  UnstyledButton
+} from "@mantine/core";
 import styles from "./JobDetails.module.css";
 import PageContainer from "@/components/page-container/PageContainer.jsx";
+import TextCard from "@/components/text-card/TextCard.jsx";
 
 const JobDetails = observer(() => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
@@ -92,7 +104,7 @@ const JobDetails = observer(() => {
     const fallbackErrorMessage = "Unable to create media playable object.";
 
     return (
-      <Box w="630px">
+      <Box>
         <Alert
           variant="light"
           color="var(--mantine-color-elv-red-8)"
@@ -206,24 +218,45 @@ const JobDetails = observer(() => {
     }
 
     return (
-      <div className="job-details__job-info">
+      <Box w="100%">
         {
           infoValues
             .filter(item => !item.hidden)
             .map(({label, value, copyable, indent, id}) => (
-              <div key={`job-details-${id}`} className={`job-details__job-info__row${indent ? " job-details__job-info__row--indent" : ""}`}>
-                <span className="job-details__job-info__label">
+              <Flex
+                key={`job-details-${id}`}
+                gap={8}
+                style={{marginLeft: indent ? "1.5rem" : 0, width: indent ? "calc(100% - 1.5rem)" : "100%"}}
+              >
+                <Text fw={500} className="job-details__job-info__label">
                   { `${label}:` }
-                </span>
-                <span className="job-details__job-info__value">{ value || "" }</span>
+                </Text>
+                <Text className="job-details__job-info__value">{ value || "" }</Text>
                 {
                   copyable && value &&
-                  <Copyable copy={value} />
+                  <CopyButton value={value}>
+                    {({copied, copy}) => (
+                      <Tooltip
+                        label={copied ? "Copied" : "Copy"}
+                        withArrow
+                        position="right"
+                      >
+                        <ActionIcon
+                          onClick={copy}
+                          size="xs"
+                          variant="transparent"
+                          color="elv-gray.1"
+                        >
+                          <ClipboardIcon color="var(--mantine-color-elv-neutral-5)" />
+                        </ActionIcon>
+                      </Tooltip>
+                    )}
+                  </CopyButton>
                 }
-              </div>
+              </Flex>
             ))
         }
-      </div>
+      </Box>
     );
   };
 
@@ -316,22 +349,18 @@ const JobDetails = observer(() => {
   };
 
   return (
-    <PageContainer title={`Details for ${ingestStore.jobs[jobId].formData?.master.title || jobId}`}>
+    <PageContainer title={`Details for ${ingestStore.jobs[jobId].formData?.master.title || jobId}`} width="65%">
       <div className="job-details">
         { JobInfo() }
 
-        <h1 className="job-details__section-header">Progress Details</h1>
+        <Title order={5} mt={16} mb={16}>Progress Details</Title>
 
-        <div className="job-details__card">
-          <div className="job-details__card__text">
-            <div>Uploading</div>
-            <div className="job-details__card__text__description">
-              {
-                ["finished", "failed"].includes(ingestStore.jobs[jobId].upload.runState) ? "" : `${ingestStore.jobs[jobId].upload.percentage || 0}%`
-              }
-            </div>
-          </div>
-          {
+        <TextCard
+          title="Uploading"
+          message={
+            ["finished", "failed"].includes(ingestStore.jobs[jobId].upload.runState) ? null : `${ingestStore.jobs[jobId].upload.percentage || 0}%`
+          }
+          rightSection={
             ingestStore.jobs[jobId].upload.runState === "failed" ?
               <div className={"job-details__card__failed-text"}>
                 Failed
@@ -339,18 +368,14 @@ const JobDetails = observer(() => {
               ingestStore.jobs[jobId].upload.runState === "finished" ?
                 <CheckmarkIcon {...iconProps} /> : <Loader size={20} />
           }
-        </div>
+        />
 
-        <div className="job-details__card">
-          <div className="job-details__card__text">
-            <div>Converting to streaming format</div>
-            <div className="job-details__card__text__description">
-              {
-                ingestStore.jobs[jobId].ingest.runState === "failed" ? "" : ingestStore.jobs[jobId].ingest.estimatedTimeLeft || ""
-              }
-            </div>
-          </div>
-          {
+        <TextCard
+          title="Converting to streaming format"
+          message={
+            ingestStore.jobs[jobId].ingest.runState === "failed" ? "" : ingestStore.jobs[jobId].ingest.estimatedTimeLeft || ""
+          }
+          rightSection={
             ingestStore.jobs[jobId].ingest.runState === "failed" ?
               <div className={"job-details__card__failed-text"}>
                 Failed
@@ -360,13 +385,11 @@ const JobDetails = observer(() => {
                 ingestStore.jobs[jobId].ingest.runState === "finished" ? <CheckmarkIcon {...iconProps} /> : <Loader size={20} />
               )
           }
-        </div>
+        />
 
-        <div className="job-details__card">
-          <div className="job-details__card__text">
-            <div>Finalizing</div>
-          </div>
-          {
+        <TextCard
+          title="Finalizing"
+          rightSection={
             ingestStore.jobs[jobId].finalize.runState === "failed" ?
               <div className={"job-details__card__failed-text"}>
                 Failed
@@ -374,7 +397,7 @@ const JobDetails = observer(() => {
               ingestStore.jobs[jobId].currentStep === "finalize" &&
               <CheckmarkIcon {...iconProps} />
           }
-        </div>
+        />
 
         { FinalizeInfo() }
         { ErrorNotification() }
