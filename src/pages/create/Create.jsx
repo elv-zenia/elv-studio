@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useState} from "react";
 import {Navigate} from "react-router-dom";
 import {observer} from "mobx-react-lite";
 import PrettyBytes from "pretty-bytes";
@@ -10,7 +10,6 @@ import {CloseIcon, ExclamationCircleIcon, UploadIcon} from "@/assets/icons";
 
 import PageContainer from "@/components/page-container/PageContainer.jsx";
 import FabricLoader from "@/components/FabricLoader";
-import InlineNotification from "@/components/common/InlineNotification";
 import AdvancedSection from "@/pages/create/advanced-section/AdvancedSection.jsx";
 
 import {
@@ -31,28 +30,6 @@ import {
 import AdvancedSelect from "@/components/advanced-select/AdvancedSelect.jsx";
 import FormSectionTitle from "@/components/form-section-title/FormSectionTitle.jsx";
 import {Dropzone} from "@mantine/dropzone";
-
-const ErrorMessaging = ({errorTitle, errorMessage}) => {
-  const errorRef = useRef(null);
-
-  useEffect(() => {
-    if(errorRef && errorRef.current) {
-      errorRef.current.scrollIntoView();
-    }
-  }, [errorTitle]);
-
-  if(!errorTitle && !errorMessage) { return null; }
-
-  return (
-    <div className="form-notification" ref={errorRef}>
-      <InlineNotification
-        type="error"
-        title={errorTitle}
-        message={errorMessage}
-      />
-    </div>
-  );
-};
 
 const HandleRemove = ({index, files, SetFilesCallback}) => {
   const newFiles = files
@@ -141,8 +118,8 @@ const S3Access = ({
 
 const Create = observer(() => {
   const [isCreating, setIsCreating] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [errorTitle, setErrorTitle] = useState("");
+  const [error, setError] = useState(null);
+
   const [masterObjectId, setMasterObjectId] = useState();
   const [uploadMethod, setUploadMethod] = useState("LOCAL");
   const [files, setFiles] = useState([]);
@@ -436,8 +413,10 @@ const Create = observer(() => {
       const createResponse = await ingestStore.CreateContentObject(createParams) || {};
 
       if(createResponse.error) {
-        setErrorTitle("Unable to create content object");
-        setErrorMessage(createResponse.error);
+        setError({
+          title: "Unable to create content object",
+          message: createResponse.error
+        });
       } else if(createResponse.id) {
         setMasterObjectId(createResponse.id);
       }
@@ -451,10 +430,8 @@ const Create = observer(() => {
   }
 
   return (
-    <PageContainer title="Ingest New Video on Demand" width="700px">
+    <PageContainer title="Ingest New Video on Demand" width="700px" error={error}>
       <FabricLoader>
-        <ErrorMessaging errorMessage={errorMessage} errorTitle={errorTitle} />
-
         <form onSubmit={HandleSubmit}>
           <Radio.Group
             label="Upload Method"
