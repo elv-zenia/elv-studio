@@ -11,20 +11,18 @@ import JSONView from "@/components/common/JSONView";
 import {
   ActionIcon,
   Alert,
-  Box,
+  Box, Button,
   CopyButton,
   Flex,
-  Group,
   Loader,
   Text,
   Title,
-  Tooltip,
-  UnstyledButton
+  Tooltip
 } from "@mantine/core";
 import styles from "./JobDetails.module.css";
 import PageContainer from "@/components/page-container/PageContainer.jsx";
 import TextCard from "@/components/text-card/TextCard.jsx";
-import {CopyToClipboard} from "@/utils/helpers.js";
+import JobDetailsCard from "@/pages/job-details/card/JobDetailsCard.jsx";
 
 const OpenObjectLink = ({libraryId, objectId}) => {
   rootStore.client.SendMessage({
@@ -40,88 +38,31 @@ const OpenObjectLink = ({libraryId, objectId}) => {
 const FinalizeInfo = observer(({jobId}) => {
   if(!ingestStore.jobs[jobId].finalize.mezzanineHash) { return null; }
 
-  const [copied, setCopied] = useState(false);
-
   return (
     <>
       <h1 className="job-details__section-header">Mezzanine Object Details</h1>
-      <div className="job-details__card job-details__card--secondary">
-        <div className="job-details__card__text">
-          <div>Hash</div>
-          <Group wrap="nowrap">
-            <Text lineClamp={1} truncate="end">
-              { ingestStore.jobs[jobId].finalize.mezzanineHash }
-            </Text>
-            <ActionIcon
-              variant="transparent"
-              onClick={() => {
-                CopyToClipboard({text: ingestStore.jobs[jobId].finalize.mezzanineHash});
-                setCopied(true);
-
-                setTimeout(() => {
-                  setCopied(false);
-                }, [3000]);
-              }}
-            >
-              {
-                copied ?
-                  <CheckmarkIcon /> : <ClipboardIcon />
-              }
-            </ActionIcon>
-          </Group>
-          {/*<Copyable*/}
-          {/*  className="job-details__card__text__description"*/}
-          {/*  copy={ingestStore.jobs[jobId].finalize.mezzanineHash}*/}
-          {/*>*/}
-          {/*  { ingestStore.jobs[jobId].finalize.mezzanineHash }*/}
-          {/*</Copyable>*/}
-        </div>
-      </div>
-      <div className="job-details__card job-details__card--secondary">
-        <div className="job-details__card__text">
-          <div>ID</div>
-          <div className="job-details__card__text__description">
-            <button
-              type="button"
-              className="job-details__card__inline-link"
-              onClick={() => OpenObjectLink({
-                libraryId: ingestStore.jobs[jobId].formData?.mez.libraryId,
-                objectId: ingestStore.jobs[jobId].finalize.objectId
-              })} >
-              <span>{ ingestStore.jobs[jobId].finalize.objectId }</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="job-details__card job-details__card--secondary">
-        <div className="job-details__card__text">
-          <div>Embeddable URL</div>
-          <div className="job-details__card__text__description">
-            {
-              ingestStore.jobs[jobId].embedUrl ?
-                <a
-                  href={ingestStore.jobs[jobId].embedUrl}
-                  target="_blank"
-                  className="job-details__card__inline-link" rel="noreferrer"
-                >
-                    <span>
-                      { ingestStore.jobs[jobId].embedUrl }
-                    </span>
-                </a> :
-                <button
-                  type="button"
-                  className="job-details__card-button primary-button"
-                  onClick={() => ingestStore.GenerateEmbedUrl({
-                    objectId: jobId,
-                    mezId: ingestStore.jobs[jobId].mezObjectId
-                  })}
-                >
-                  Create embed URL
-                </button>
-            }
-          </div>
-        </div>
-      </div>
+      <JobDetailsCard
+        label="Hash"
+        value={ingestStore.jobs[jobId].finalize.mezzanineHash}
+        secondary
+        type="COPY"
+      />
+      <JobDetailsCard
+        label="ID"
+        value={ingestStore.jobs[jobId].finalize.objectId}
+        secondary
+        type="LINK"
+        LinkCallback={() => OpenObjectLink({
+          libraryId: ingestStore.jobs[jobId].formData?.mez.libraryId,
+          objectId: ingestStore.jobs[jobId].finalize.objectId
+        })}
+      />
+      <JobDetailsCard
+        label="Embeddable URL"
+        value={ingestStore.jobs[jobId].embedUrl}
+        secondary
+        type="LINK"
+      />
     </>
   );
 });
@@ -136,13 +77,19 @@ const ErrorNotification = observer(({jobId, setShowErrorDialog}) => {
       <Alert
         variant="light"
         color="var(--mantine-color-elv-red-8)"
+        classNames={{wrapper: styles.alertWrapper}}
         icon={<ExclamationCircleIcon />}
       >
         <Flex justify="space-between" align="center">
           { ingestStore.jobs[jobId].errorMessage || fallbackErrorMessage }
-          <UnstyledButton onClick={() => setShowErrorDialog(true)} className={styles.textButton}>
-            Learn More
-          </UnstyledButton>
+          {
+            ingestStore.jobs[jobId].errorLog &&
+            (
+              <Button variant="transparent" onClick={() => setShowErrorDialog(true)} className={styles.textButton}>
+                Learn More
+              </Button>
+            )
+          }
         </Flex>
       </Alert>
     </Box>
