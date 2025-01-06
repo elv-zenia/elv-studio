@@ -40,7 +40,7 @@ const FinalizeInfo = observer(({jobId}) => {
 
   return (
     <>
-      <h1 className="job-details__section-header">Mezzanine Object Details</h1>
+      <Title order={5} mt={16} mb={16}>Mezzanine Object Details</Title>
       <JobDetailsCard
         label="Hash"
         value={ingestStore.jobs[jobId].finalize.mezzanineHash}
@@ -333,9 +333,9 @@ const JobDetails = observer(() => {
           }
           rightSection={
             ingestStore.jobs[jobId].upload.runState === "failed" ?
-              <div className={"job-details__card__failed-text"}>
+              <Text c="elv-red.4">
                 Failed
-              </div> :
+              </Text> :
               ingestStore.jobs[jobId].upload.runState === "finished" ?
                 <CheckmarkIcon {...iconProps} /> : <Loader size={20} />
           }
@@ -348,9 +348,9 @@ const JobDetails = observer(() => {
           }
           rightSection={
             ingestStore.jobs[jobId].ingest.runState === "failed" ?
-              <div className={"job-details__card__failed-text"}>
+              <Text c="elv-red.4">
                 Failed
-              </div> :
+              </Text> :
               ["ingest", "finalize"].includes(ingestStore.jobs[jobId].currentStep) &&
               (
                 ingestStore.jobs[jobId].ingest.runState === "finished" ? <CheckmarkIcon {...iconProps} /> : <Loader size={20} />
@@ -362,9 +362,9 @@ const JobDetails = observer(() => {
           title="Finalizing"
           rightSection={
             ingestStore.jobs[jobId].finalize.runState === "failed" ?
-              <div className={"job-details__card__failed-text"}>
+              <Text c="elv-red.4">
                 Failed
-              </div> :
+              </Text> :
               ingestStore.jobs[jobId].currentStep === "finalize" &&
               <CheckmarkIcon {...iconProps} />
           }
