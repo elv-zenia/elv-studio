@@ -4,7 +4,6 @@ import {observer} from "mobx-react-lite";
 import PrettyBytes from "pretty-bytes";
 
 import {ingestStore, rootStore} from "@/stores";
-import {PageLoader} from "@/components/common/Loader";
 import {CheckmarkIcon, ClipboardIcon, ExclamationCircleIcon} from "@/assets/icons";
 import Dialog from "@/components/common/Dialog";
 import JSONView from "@/components/common/JSONView";
@@ -318,7 +317,7 @@ const JobDetails = observer(() => {
     });
   };
 
-  if(!ingestStore.job) { return <PageLoader />; }
+  if(!ingestStore.job) { return <Loader />; }
 
   const iconProps = {
     width: 20,
