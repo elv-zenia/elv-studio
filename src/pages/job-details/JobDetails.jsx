@@ -11,7 +11,8 @@ import JSONView from "@/components/common/JSONView";
 import {
   ActionIcon,
   Alert,
-  Box, Button,
+  Box,
+  Button,
   CopyButton,
   Flex,
   Loader,
@@ -220,10 +221,15 @@ const JobInfo = ({jobId}) => {
               gap={8}
               style={{marginLeft: indent ? "1.5rem" : 0, width: indent ? "calc(100% - 1.5rem)" : "100%"}}
             >
-              <Text fw={500} className="job-details__job-info__label">
+              <Text
+                fw={500}
+                pr="0.5rem"
+                wrap="no-wrap"
+                style={{whiteSpace: "nowrap"}}
+              >
                 { `${label}:` }
               </Text>
-              <Text className="job-details__job-info__value">{ value || "" }</Text>
+              <Text truncate="end">{ value || "" }</Text>
               {
                 copyable && value &&
                 <CopyButton value={value}>
