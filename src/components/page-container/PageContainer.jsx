@@ -38,17 +38,19 @@ const PageContainer = ({
   error
 }) => {
   return (
-    <Box p="24 46 46" w={width}>
-      <AlertMessage error={error} />
-      {
-        title &&
-        <Flex justify={centerTitle ? "center" : "flex-start"}>
-          <Title order={3} classNames={{root: styles.root}} mb={24}>
-            { title }
-          </Title>
-        </Flex>
-      }
-      { children }
+    <Box w={width}>
+      <Box p="24 46 46">
+        <AlertMessage error={error} />
+        {
+          title &&
+          <Flex justify={centerTitle ? "center" : "flex-start"}>
+            <Title order={3} classNames={{root: styles.root}} mb={24}>
+              { title }
+            </Title>
+          </Flex>
+        }
+        { children }
+      </Box>
     </Box>
   );
 };

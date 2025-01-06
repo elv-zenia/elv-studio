@@ -430,7 +430,7 @@ const Create = observer(() => {
   }
 
   return (
-    <PageContainer title="Ingest New Video on Demand" width="700px" error={error}>
+    <PageContainer title="Ingest New Video on Demand" width="750px" error={error}>
       <FabricLoader>
         <form onSubmit={HandleSubmit}>
           <Radio.Group
