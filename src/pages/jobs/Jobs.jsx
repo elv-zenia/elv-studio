@@ -1,13 +1,13 @@
 import {useState} from "react";
 import {observer} from "mobx-react-lite";
 import {ingestStore} from "@/stores";
-import Dialog from "@/components/common/Dialog";
 import PageContainer from "@/components/page-container/PageContainer.jsx";
 import {DataTable} from "mantine-datatable";
 import {useNavigate} from "react-router-dom";
-import {Text} from "@mantine/core";
+import {Button, Text} from "@mantine/core";
 
 import styles from "./Jobs.module.css";
+import ConfirmModal from "@/components/confirm-modal/ConfirmModal.jsx";
 
 const Jobs = observer(() => {
   const [showClearJobsDialog, setShowClearJobsDialog] = useState(false);
@@ -56,21 +56,20 @@ const Jobs = observer(() => {
   return (
     <PageContainer title="Ingest Jobs">
       <div className="jobs">
-        <button
-          className="primary-button jobs__button"
-          type="button"
+        <Button
           onClick={() => setShowClearJobsDialog(true)}
+          mb={16}
         >
           Clear Inactive Jobs
-        </button>
+        </Button>
         {
           showClearJobsDialog &&
-          <Dialog
+          <ConfirmModal
             title="Clear Jobs"
-            description="Are you sure you want to clear all inactive jobs? This action cannot be undone."
-            ConfirmCallback={ingestStore.ClearInactiveJobs}
-            open={showClearJobsDialog}
-            onOpenChange={() => setShowClearJobsDialog(false)}
+            message="Are you sure you want to clear all inactive jobs? This action cannot be undone."
+            ConfirmCallback={() => ingestStore.ClearInactiveJobs}
+            show={showClearJobsDialog}
+            CloseCallback={() => setShowClearJobsDialog(false)}
           />
         }
         <DataTable
