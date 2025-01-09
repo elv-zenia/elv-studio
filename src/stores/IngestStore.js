@@ -19,7 +19,7 @@ class IngestStore {
   dialog = {
     title: "",
     description: ""
-  }
+  };
   dialogResponse = null;
 
   constructor(rootStore) {
@@ -32,17 +32,9 @@ class IngestStore {
     return this.rootStore.client;
   }
 
-  get libraries() {
-    return this.libraries;
-  }
-
-  get contentTypes() {
-    return this.contentTypes;
-  }
-
   GetLibrary = (libraryId) => {
     return this.libraries[libraryId];
-  }
+  };
 
   SetJob(jobId) {
     this.job = this.jobs[jobId];
@@ -94,7 +86,7 @@ class IngestStore {
     }
 
     this.UpdateIngestJobs({jobs: this.jobs});
-  }
+  };
 
   ClearInactiveJobs = () => {
     const jobs = {};
@@ -116,7 +108,7 @@ class IngestStore {
       "elv-jobs",
       this.client.utils.B64(JSON.stringify(jobs))
     );
-  }
+  };
 
   ShowWarningDialog = flow(function * ({title, description}) {
     this.showDialog = true;
@@ -133,7 +125,7 @@ class IngestStore {
   HideWarningDialog = (response) => {
     this.showDialog = false;
     this.dialogResponse(response);
-  }
+  };
 
   WaitForPublish = flow (function * ({hash, objectId}) {
     let publishFinished = false;
@@ -201,7 +193,7 @@ class IngestStore {
     // eslint-disable-next-line no-console
     console.error(errorMessage, error);
     throw error;
-  }
+  };
 
   ContentType = flow(function * ({name, typeId, versionHash}) {
     return yield this.client.ContentType({name, typeId, versionHash});
