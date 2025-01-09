@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {useParams} from "react-router-dom";
+import {useNavigate, useParams} from "react-router-dom";
 import {observer} from "mobx-react-lite";
 import PrettyBytes from "pretty-bytes";
 
@@ -23,6 +23,7 @@ import styles from "./JobDetails.module.css";
 import PageContainer from "@/components/page-container/PageContainer.jsx";
 import TextCard from "@/components/text-card/TextCard.jsx";
 import JobDetailsCard from "@/pages/job-details/card/JobDetailsCard.jsx";
+import {IconChevronLeft} from "@tabler/icons-react";
 
 const OpenObjectLink = ({libraryId, objectId}) => {
   rootStore.client.SendMessage({
@@ -261,6 +262,7 @@ const JobDetails = observer(() => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const params = useParams();
   const jobId = params.id;
+  const navigate = useNavigate();
 
   useEffect(() => {
     ingestStore.SetJob(jobId);
@@ -325,7 +327,19 @@ const JobDetails = observer(() => {
   };
 
   return (
-    <PageContainer title={`Details for ${ingestStore.jobs[jobId].formData?.master.title || jobId}`} width="725px">
+    <PageContainer
+      title={`Details for ${ingestStore.jobs[jobId].formData?.master.title || jobId}`}
+      width="725px"
+      actions={[
+        {
+          label: "All Content",
+          leftSection: <IconChevronLeft height={18} />,
+          variant: "filled",
+          onClick: () => navigate("/content")
+        }
+      ]}
+      BackLinkCallback={() => navigate("/content")}
+    >
       <div className="job-details">
         <JobInfo jobId={jobId} />
 

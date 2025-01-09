@@ -4,13 +4,15 @@ import AppRoutes from "./Routes.jsx";
 
 import SideNavigation from "@/components/side-navigation/SideNavigation.jsx";
 import WarningDialog from "@/components/WarningDialog.jsx";
-import JobsWrapper from "@/pages/jobs/JobsWrapper.jsx";
+import JobsWrapper from "@/pages/jobs/wrapper/JobsWrapper.jsx";
 import {rootStore, uiStore} from "@/stores/index.js";
 import MantineTheme from "@/assets/MantineTheme.js";
 
 import {AppShell, Loader, MantineProvider} from "@mantine/core";
+
 import "@mantine/core/styles.css";
 import "@mantine/dropzone/styles.css";
+import "mantine-datatable/styles.css";
 
 const App = observer(() => {
   return (

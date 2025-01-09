@@ -1,6 +1,6 @@
 import {useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {ingestStore, rootStore} from "@/stores";
+import {ingestStore, rootStore} from "@/stores/index.js";
 import {Loader} from "@mantine/core";
 
 const JobsWrapper = observer(({children}) => {
