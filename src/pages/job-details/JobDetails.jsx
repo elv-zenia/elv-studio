@@ -334,7 +334,7 @@ const JobDetails = observer(() => {
         {
           label: "All Content",
           leftSection: <IconChevronLeft height={18} />,
-          variant: "filled",
+          variant: "outline",
           onClick: () => navigate("/content")
         }
       ]}
