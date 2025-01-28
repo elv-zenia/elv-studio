@@ -1,7 +1,7 @@
 import {useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {PageLoader} from "@/components/common/Loader";
 import {ingestStore} from "@/stores";
+import {Loader} from "@mantine/core";
 
 const FabricLoader = observer(({children}) => {
   const LoadDependencies = async () => {
@@ -13,7 +13,7 @@ const FabricLoader = observer(({children}) => {
   }, []);
 
   if(!ingestStore.loaded) {
-    return <PageLoader />;
+    return <Loader />;
   } else {
     return children;
   }

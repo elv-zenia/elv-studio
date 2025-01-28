@@ -1,42 +1,35 @@
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useState} from "react";
 import {Navigate} from "react-router-dom";
 import {observer} from "mobx-react-lite";
 import PrettyBytes from "pretty-bytes";
 
-import {ingestStore, tenantStore} from "@/stores";
+import {ingestStore, tenantStore, rootStore} from "@/stores";
 import {s3Regions} from "@/utils";
 import {abrProfileClear, abrProfileBoth} from "@/utils/ABR";
+import {CloseIcon, ExclamationCircleIcon, UploadIcon} from "@/assets/icons";
 
-import Dropzone from "@/components/common/Dropzone";
+import PageContainer from "@/components/page-container/PageContainer.jsx";
 import FabricLoader from "@/components/FabricLoader";
-import {Input, TextArea, Select, JsonTextArea, Checkbox, Radio} from "@/components/common/Inputs";
-import InlineNotification from "@/components/common/InlineNotification";
-import {CloseIcon} from "@/assets/icons";
-import {rootStore} from "@/stores/index.js";
-import {Box} from "@mantine/core";
-import AdvancedSection from "@/pages/create/AdvancedSection.jsx";
+import AdvancedSection from "@/pages/create/advanced-section/AdvancedSection.jsx";
 
-const ErrorMessaging = ({errorTitle, errorMessage}) => {
-  const errorRef = useRef(null);
-
-  useEffect(() => {
-    if(errorRef && errorRef.current) {
-      errorRef.current.scrollIntoView();
-    }
-  }, [errorTitle]);
-
-  if(!errorTitle && !errorMessage) { return null; }
-
-  return (
-    <div className="form-notification" ref={errorRef}>
-      <InlineNotification
-        type="error"
-        title={errorTitle}
-        message={errorMessage}
-      />
-    </div>
-  );
-};
+import {
+  Box,
+  Radio,
+  Select,
+  Stack,
+  TextInput,
+  Checkbox,
+  Textarea,
+  Button,
+  Flex,
+  Text,
+  ActionIcon,
+  Group,
+  Divider
+} from "@mantine/core";
+import AdvancedSelect from "@/components/advanced-select/AdvancedSelect.jsx";
+import FormSectionTitle from "@/components/form-section-title/FormSectionTitle.jsx";
+import {Dropzone} from "@mantine/dropzone";
 
 const HandleRemove = ({index, files, SetFilesCallback}) => {
   const newFiles = files
@@ -55,7 +48,7 @@ const Permissions = ({permission, setPermission}) => {
     <Box mb={16}>
       <Select
         label="Permission"
-        labelDescription="Set a permission level."
+        description="Set a permission level."
         tooltip={
           Object.values(rootStore.client.permissionLevels).map(({short, description}) =>
             <div key={`permission-info-${short}`} className="form__permission-tooltip-item">
@@ -65,8 +58,8 @@ const Permissions = ({permission, setPermission}) => {
           )
         }
         value={permission}
-        onChange={event => setPermission(event.target.value)}
-        options={
+        onChange={value => setPermission(value)}
+        data={
           Object.keys(permissionLevels || []).map(permissionName => (
             {
               label: permissionLevels[permissionName].short,
@@ -74,6 +67,7 @@ const Permissions = ({permission, setPermission}) => {
             }
           ))
         }
+        mt={16}
       />
     </Box>
   );
@@ -124,11 +118,12 @@ const S3Access = ({
 
 const Create = observer(() => {
   const [isCreating, setIsCreating] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [errorTitle, setErrorTitle] = useState("");
+  const [error, setError] = useState(null);
+
   const [masterObjectId, setMasterObjectId] = useState();
-  const [uploadMethod, setUploadMethod] = useState("local");
+  const [uploadMethod, setUploadMethod] = useState("LOCAL");
   const [files, setFiles] = useState([]);
+
   const [abrProfile, setAbrProfile] = useState();
   const [masterLibrary, setMasterLibrary] = useState();
   const [accessGroup, setAccessGroup] = useState();
@@ -158,6 +153,14 @@ const Create = observer(() => {
   const [s3UseAKSecret, setS3UseAKSecret] = useState(false);
 
   const [useAdvancedSettings, setUseAdvancedSettings] = useState(false);
+
+  const ENCRYPTION_OPTIONS = [
+    {value: "drm-public", label: "DRM - Public Access", disabled: disableDrmPublic, description: "Playout Formats: Dash Widevine, HLS Sample AES, HLS AES-128"},
+    {value: "drm-all", label: "DRM - All Formats", disabled: disableDrmAll, description: "Playout Formats: Dash Widevine, HLS Sample AES, HLS AES-128, HLS Fairplay, HLS Widevine, HLS PlayReady"},
+    {value: "drm-restricted", label: "DRM - Widevine and Fairplay", disabled: disableDrmRestricted, description: "Playout Formats: Dash Widevine, HLS Fairplay"},
+    {value: "clear", label: "Clear", disabled: disableClear},
+    {value: "custom", label: "Custom"}
+  ];
 
   useEffect(() => {
     if(tenantStore.loaded) {
@@ -220,17 +223,6 @@ const Create = observer(() => {
     }
   }, [permission]);
 
-  useEffect(() => {
-    const hasSizeableFiles = files.some(file => file.size > 0);
-
-    if(!hasSizeableFiles && files.length > 0) {
-      setErrorTitle(`Empty ${files.length === 1 ? "File" : "Files"}.`);
-      setErrorMessage(`${files.length === 1 ? "This file contains" : "These files contain"} no data.`);
-    } else {
-      setErrorTitle("");
-      setErrorMessage("");
-    }
-  }, [files]);
 
   useEffect(() => {
     if(playbackEncryption === "custom" && !abrProfile) {
@@ -245,10 +237,10 @@ const Create = observer(() => {
     <>
       <Select
         label="Mezzanine Library"
-        labelDescription="This is the library where your mezzanine object will be created."
-        formName="mezLibrary"
+        description="This is the library where your mezzanine object will be created."
+        name="mezLibrary"
         required={true}
-        options={
+        data={
           Object.keys(ingestStore.libraries || {}).map(libraryId => (
             {
               label: ingestStore.libraries[libraryId].name || "",
@@ -256,12 +248,10 @@ const Create = observer(() => {
             }
           ))
         }
-        defaultOption={{
-          value: "",
-          label: "Select Library"
-        }}
-        onChange={event => setMezLibrary(event.target.value)}
+        placeholder="Select Library"
+        onChange={value => setMezLibrary(value)}
         value={mezLibrary}
+        mb={16}
       />
     </>
   );
@@ -327,19 +317,19 @@ const Create = observer(() => {
 
   const ValidForm = () => {
     if(
-      uploadMethod === "local" && files.length === 0 ||
+      uploadMethod === "LOCAL" && files.length === 0 ||
       !masterLibrary ||
       !name ||
       !playbackEncryption ||
       playbackEncryption === "custom" && !abrProfile ||
-      errorMessage ||
-      errorTitle ||
+      // Check for invalid files
+      (files.length > 0 && files.some(item => item.errors)) ||
       !mezContentType
     ) {
       return false;
     }
 
-    if(uploadMethod === "s3") {
+    if(uploadMethod === "S3") {
       if(s3UseAKSecret) {
         if(
           !s3Region ||
@@ -365,7 +355,7 @@ const Create = observer(() => {
 
     let access = [];
     try {
-      if(uploadMethod === "s3") {
+      if(uploadMethod === "S3") {
         access = S3Access({
           s3UseAKSecret,
           s3Url,
@@ -399,10 +389,10 @@ const Create = observer(() => {
           master: {
             libraryId: masterLibrary,
             accessGroup: accessGroupAddress,
-            files: uploadMethod === "local" ? files : undefined,
+            files: uploadMethod === "LOCAL" ? files : undefined,
             title: name,
             description: description,
-            s3Url: uploadMethod === "s3" ? s3Url : undefined,
+            s3Url: uploadMethod === "S3" ? s3Url : undefined,
             playbackEncryption,
             access: JSON.stringify(access, null, 2) || "",
             copy: s3Copy,
@@ -423,8 +413,10 @@ const Create = observer(() => {
       const createResponse = await ingestStore.CreateContentObject(createParams) || {};
 
       if(createResponse.error) {
-        setErrorTitle("Unable to create content object");
-        setErrorMessage(createResponse.error);
+        setError({
+          title: "Unable to create content object",
+          message: createResponse.error
+        });
       } else if(createResponse.id) {
         setMasterObjectId(createResponse.id);
       }
@@ -434,201 +426,273 @@ const Create = observer(() => {
   };
 
   if(masterObjectId) {
-    return <Navigate to={`/jobs/${masterObjectId}`} replace />;
+    return <Navigate to={`/content/${masterObjectId}`} replace />;
   }
 
   return (
-    <FabricLoader>
-      <div className="page-container">
-        <div className="page__header">Ingest New Media</div>
-
-        <ErrorMessaging errorMessage={errorMessage} errorTitle={errorTitle} />
-
-        <form className="form" onSubmit={HandleSubmit}>
-          <Radio
-            label="Upload Method:"
-            formName="uploadMethod"
-            options={[
-              {
-                optionLabel: "Local file",
-                id: "local",
-                value: "local",
-                checked: uploadMethod === "local",
-                onChange: event => setUploadMethod(event.target.value)
-              },
-              {
-                optionLabel: "S3 Bucket",
-                id: "s3",
-                value: "s3",
-                checked: uploadMethod === "s3",
-                onChange: event => setUploadMethod(event.target.value)
-              }
-            ]}
-          />
+    <PageContainer title="Ingest New Video on Demand" width="750px" error={error}>
+      <FabricLoader>
+        <form onSubmit={HandleSubmit}>
+          <Radio.Group
+            label="Upload Method"
+            name="uploadMethod"
+            value={uploadMethod}
+            onChange={value => setUploadMethod(value)}
+            mb={16}
+          >
+            <Stack mt="xs">
+              <Radio value="LOCAL" label="Local File" />
+              <Radio value="S3" label="S3 Bucket" />
+            </Stack>
+          </Radio.Group>
           {
-            uploadMethod === "local" &&
+            uploadMethod === "LOCAL" &&
               <>
                 <Dropzone
-                  accept={{"audio/*": [], "video/*": []}}
-                  id="main-dropzone"
                   onDrop={files => setFiles(files)}
-                />
-                <label>Files:</label>
-                <div className="file-list">
+                  onReject={fileRejections => {
+                    const fileObjects = fileRejections.map(item => (
+                      {
+                        ...item.file,
+                        errors: item.errors
+                      }
+                    ));
+                    setFiles(fileObjects);
+                  }}
+                  accept={{"audio/*": [], "video/*": []}}
+                  multiple={false}
+                  validator={(file) => {
+                    if(file.size === 0) {
+                      return {
+                        code: "size-empty",
+                        message: "This file contains no data"
+                      };
+                    }
+
+                    return null;
+                  }}
+                  mb={16}
+                >
+                  <Flex p="65 70" direction="column" justify="center">
+                    <Flex justify="center" mb={4}>
+                      <Dropzone.Accept>
+                        <UploadIcon />
+                      </Dropzone.Accept>
+                      <Dropzone.Reject>
+                        <CloseIcon
+                          style={{ width: "8rem", height: "8rem", color: "var(--mantine-color-red-6)" }}
+                          stroke={1.5}
+                        />
+                      </Dropzone.Reject>
+                      <Dropzone.Idle>
+                        <UploadIcon color="elv-gray.3" />
+                      </Dropzone.Idle>
+                    </Flex>
+
+                    <Stack justify="center" gap={0} align="center">
+                      <Text c="elv-gray.3" size="xs" mb={2}>Drag a video or audio file</Text>
+                      <Button variant="transparent" p={0} h="fit-content" size="xs">Upload a File</Button>
+                    </Stack>
+                  </Flex>
+                </Dropzone>
+                {
+                  files.length > 0 &&
+                  <Text mb={8}>Files:</Text>
+                }
+                <Flex direction="column" gap={0}>
                   {
                     files.map((file, index) => (
-                      <div className="file-list__item" key={`${file.name || file.path}-${index}`}>
-                        <span>{file.name || file.path}</span>
-                        <span>&nbsp;- {PrettyBytes(file.size || 0)}</span>
-                        <button
-                          type="button"
-                          title="Remove file"
-                          aria-label="Remove file"
-                          onClick={() => HandleRemove({index, files, SetFilesCallback: setFiles})}
-                          className="file-list__item__close-button"
-                        >
-                          <CloseIcon />
-                          {/*<ImageIcon className="file-list__item__close-button__icon" icon={CloseIcon} />*/}
-                        </button>
-                      </div>
+                      <Box
+                        key={`${file.name || file.path}-${index}`}
+                        bg="elv-gray.0"
+                        p={16}
+                        mb=".875rem"
+                        bd={file.errors ? "2px solid elv-red.4" : "1px solid transparent"}
+                      >
+                        <Stack>
+                          <Flex
+                            direction="row"
+                            align="center"
+                            justify="space-between"
+                          >
+                            <Group gap={5}>
+                              {
+                                file.errors &&
+                                <ExclamationCircleIcon color="var(--mantine-color-elv-red-4)" />
+                              }
+                              <Text>{file.name || file.path}</Text>
+                              <Text>- {PrettyBytes(file.size || 0)}</Text>
+                            </Group>
+                            <ActionIcon
+                              title="Remove file"
+                              size="md"
+                              variant="transparent"
+                              ml={16}
+                              onClick={() => HandleRemove({index, files, SetFilesCallback: setFiles})}
+                            >
+                              <CloseIcon />
+                            </ActionIcon>
+                          </Flex>
+                          {
+                            file.errors ?
+                              (
+                                <>
+                                  <Divider />
+                                  <Text c="elv-red.4">
+                                    { file.errors.map(item => item.message).join(", ") || "This file cannot be ingested" }
+                                  </Text>
+                                </>
+                              ) : null
+                          }
+                        </Stack>
+                      </Box>
                     ))
                   }
-                </div>
+                </Flex>
               </>
           }
 
           {/* S3 Details */}
           {
-            uploadMethod === "s3" && <>
+            uploadMethod === "S3" && <>
               {
                 !s3UseAKSecret &&
-                <TextArea
+                <Textarea
                   label="Presigned URL"
+                  name="presignedUrl"
                   value={s3PresignedUrl}
                   onChange={event => setS3PresignedUrl(event.target.value)}
-                  required={uploadMethod === "s3" && !s3UseAKSecret}
+                  required={uploadMethod === "S3" && !s3UseAKSecret}
+                  mb={16}
                 />
               }
 
               <Select
                 label="Region"
-                formName="s3Region"
-                options={
+                name="s3Region"
+                data={
                   s3Regions.map(({value, name}) => (
                     {value, label: name}
                   ))
                 }
-                defaultOption={{
-                  value: "",
-                  label: "Select Region"
-                }}
-                onChange={event => setS3Region(event.target.value)}
+                placeholder="Select Region"
+                onChange={value => setS3Region(value)}
                 required={s3UseAKSecret}
+                mb={16}
               />
 
               <Checkbox
                 label="Use access key and secret"
-                value={s3UseAKSecret}
+                name="s3UseAKSecret"
                 checked={s3UseAKSecret}
                 onChange={event => setS3UseAKSecret(event.target.checked)}
+                mb={16}
               />
 
               {
                 s3UseAKSecret &&
                   <>
-                    <Input
+                    <TextInput
                       label="S3 URI"
-                      formName="s3Url"
+                      name="s3Url"
                       value={s3Url}
                       onChange={event => setS3Url(event.target.value)}
                       placeholder="s3://BUCKET_NAME/PATH_TO_MEDIA.mp4"
-                      required={uploadMethod === "s3"}
+                      required={uploadMethod === "S3"}
+                      mb={16}
                     />
-                    <Input
+                    <TextInput
                       label="Access key"
-                      formName="s3AccessKey"
+                      name="s3AccessKey"
                       value={s3AccessKey}
                       onChange={event => setS3AccessKey(event.target.value)}
                       type="password"
-                      required={uploadMethod === "s3"}
+                      required={uploadMethod === "S3"}
+                      mb={16}
                     />
 
-                    <Input
+                    <TextInput
                       label="Secret"
-                      formName="s3Secret"
+                      name="s3Secret"
                       value={s3Secret}
                       onChange={event => setS3Secret(event.target.value)}
                       type="password"
-                      required={uploadMethod === "s3"}
+                      required={uploadMethod === "S3"}
+                      mb={16}
                     />
                   </>
               }
 
               <Checkbox
                 label="Copy file onto the fabric"
-                value={s3Copy}
+                name="s3Copy"
                 checked={s3Copy}
                 onChange={event => setS3Copy(event.target.checked)}
+                mb={16}
               />
             </>
           }
 
-          <Input
+          <FormSectionTitle
+            title="Details"
+          />
+
+          <TextInput
             label="Name"
-            required={true}
-            formName="name"
+            name="name"
             onChange={event => setName(event.target.value)}
             value={name}
+            mb={16}
+            required
           />
-          <Input
+          <TextInput
             label="Description"
-            formName="description"
+            name="description"
             onChange={event => setDescription(event.target.value)}
             value={description}
+            mb={16}
           />
-          <Input
+          <TextInput
             label="Display Title"
-            formName="displayTitle"
+            name="displayTitle"
             onChange={event => setDisplayTitle(event.target.value)}
             value={displayTitle}
+            mb={16}
           />
 
           <Select
             label="Access Group"
-            labelDescription="This is the Access Group that will manage your master object."
-            formName="accessGroup"
-            required={false}
-            options={
-              Object.keys(ingestStore.accessGroups || {}).map(accessGroupName => (
-                {
-                  label: accessGroupName,
-                  value: accessGroupName
-                }
+            description="This is the Access Group that will manage your master object."
+            name="accessGroup"
+            data={
+              Object.keys(ingestStore.accessGroups || {}).map(groupName => (
+                {value: groupName, label: groupName}
               ))
             }
-            defaultOption={{
-              value: "",
-              label: "Select Access Group"
-            }}
-            onChange={event => setAccessGroup(event.target.value)}
+            placeholder="Select Access Group"
+            value={accessGroup}
+            onChange={(value) => setAccessGroup(value)}
+            allowDeselect={false}
+            mb={16}
           />
 
           <Checkbox
             label="Use Master Object as Mezzanine Object"
-            value={useMasterAsMez}
             checked={useMasterAsMez}
             onChange={event => {
               setMezLibrary(masterLibrary);
               setUseMasterAsMez(event.target.checked);
             }}
+            name="masterAsMez"
+            mb={16}
           />
 
           <Select
             label="Library"
-            labelDescription={useMasterAsMez ? "This is the library where your master and mezzanine object will be created." : "This is the library where your master object will be created."}
-            formName="masterLibrary"
+            description={useMasterAsMez ? "This is the library where your master and mezzanine object will be created." : "This is the library where your master object will be created."}
+            name="masterLibrary"
             required={true}
-            options={
+            data={
               Object.keys(ingestStore.libraries || {}).map(libraryId => (
                 {
                   label: ingestStore.libraries[libraryId].name || "",
@@ -636,45 +700,36 @@ const Create = observer(() => {
                 }
               ))
             }
-            defaultOption={{
-              value: "",
-              label: "Select Library"
-            }}
-            onChange={event => setMasterLibrary(event.target.value)}
+            placeholder="Select Library"
+            onChange={value => setMasterLibrary(value)}
+            mb={16}
           />
 
           { !useMasterAsMez && mezDetails }
 
-          <h1 className="form__section-header">Playback Settings</h1>
-          <Select
-            label="Playback Encryption"
-            labelDescription="Select a playback encryption option. Enable Clear or Digital Rights Management (DRM) copy protection during playback. To configure the ABR profile entirely, use the Custom option."
-            formName="playbackEncryption"
-            required={true}
-            options={[
-              {value: "drm-public", label: "DRM - Public Access", disabled: disableDrmPublic, title: "Playout Formats: Dash Widevine, HLS Sample AES, HLS AES-128"},
-              {value: "drm-all", label: "DRM - All Formats", disabled: disableDrmAll, title: "Playout Formats: Dash Widevine, HLS Sample AES, HLS AES-128, HLS Fairplay, HLS Widevine, HLS PlayReady"},
-              {value: "drm-restricted", label: "DRM - Widevine and Fairplay", disabled: disableDrmRestricted},
-              {value: "clear", label: "Clear", disabled: disableClear},
-              {value: "custom", label: "Custom"}
-            ]}
-            defaultOption={{
-              value: "",
-              label: "Select Encryption"
-            }}
+          <FormSectionTitle
+            title="Playback Settings"
+          />
+
+          <AdvancedSelect
             value={playbackEncryption}
-            onChange={event => setPlaybackEncryption(event.target.value)}
+            SetValue={setPlaybackEncryption}
+            options={ENCRYPTION_OPTIONS}
           />
 
           {
             playbackEncryption === "custom" &&
-            <JsonTextArea
-              formName="abrProfile"
+            <Textarea
+              name="abrProfile"
               label="ABR Profile Metadata"
               value={abrProfile}
               onChange={event => setAbrProfile(event.target.value)}
               required={playbackEncryption === "custom"}
               defaultValue={{default_profile: {}}}
+              minRows={6}
+              maxRows={10}
+              autosize
+              mb={16}
             />
           }
 
@@ -687,33 +742,29 @@ const Create = observer(() => {
             <Box mb={16}>
               <Select
                 label="Mezzanine Content Type"
-                labelDescription="This will determine the type for the mezzanine object creation. Enter a valid object ID, version hash, or title."
-                formName="mezContentType"
+                description="This will determine the type for the mezzanine object creation. Enter a valid object ID, version hash, or title."
+                name="mezContentType"
                 required={true}
-                options={Object.keys(ingestStore.contentTypes || {}).map(typeId => (
+                data={Object.keys(ingestStore.contentTypes || {}).map(typeId => (
                   {value: typeId, label: ingestStore.contentTypes[typeId].name}
                 ))}
-                defaultOption={{
-                  value: "",
-                  label: "Select Content Type"
-                }}
+                placeholder="Select Content Type"
                 value={mezContentType}
                 onChange={event => setMezContentType(event.target.value)}
               />
             </Box>
           </AdvancedSection>
 
-          <div>
-            <input
-              className="form__actions"
-              type="submit"
-              value={isCreating ? "Submitting..." : "Create"}
-              disabled={isCreating || !ValidForm()}
-            />
-          </div>
+          <Button
+            type="submit"
+            disabled={isCreating || !ValidForm()}
+            mt={16}
+          >
+            { isCreating ? "Submitting..." : "Create" }
+          </Button>
         </form>
-      </div>
-    </FabricLoader>
+      </FabricLoader>
+    </PageContainer>
   );
 });
 

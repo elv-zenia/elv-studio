@@ -9,8 +9,8 @@ const AppRoutes = observer(() => {
     <Routes>
       <Route path="/" element={<Navigate replace to="/new" />} />
       <Route path="/new" element={<Create />} />
-      <Route path="/jobs" element={<Jobs />} />
-      <Route path="/jobs/:id" element={<JobDetails />} />
+      <Route path="/content" element={<Jobs />} />
+      <Route path="/content/:id" element={<JobDetails />} />
     </Routes>
   );
 });

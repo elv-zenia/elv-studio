@@ -1,7 +1,7 @@
 import {useEffect} from "react";
 import {observer} from "mobx-react-lite";
-import {PageLoader} from "@/components/common/Loader";
-import {ingestStore, rootStore} from "@/stores";
+import {ingestStore, rootStore} from "@/stores/index.js";
+import {Loader} from "@mantine/core";
 
 const JobsWrapper = observer(({children}) => {
   useEffect(() => {
@@ -15,7 +15,7 @@ const JobsWrapper = observer(({children}) => {
     }
   }, []);
 
-  if(!ingestStore.jobs) { return <PageLoader />; }
+  if(!ingestStore.jobs) { return <Loader />; }
 
   return children;
 });
